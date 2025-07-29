@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        /* 波浪按钮的主要样式 */
+        .wave-button {
+            position: relative;
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            overflow: hidden;
+            transition: transform 0.3s ease;
+            animation: breathing 2s ease-in-out infinite; /* 呼吸动画，2秒周期，无限循环 */
+        }
+
+        /* 呼吸动画效果 */
+        @keyframes breathing {
+            0% {
+                transform: scale(1); /* 原始大小 */
+                box-shadow: 0 0 20px rgba(102, 126, 234, 0.3); /* 淡阴影 */
+            }
+            50% {
+                transform: scale(1.30); /* 放大到105% */
+                box-shadow: 0 0 30px rgba(102, 126, 234, 0.6); /* 强阴影 */
+            }
+            100% {
+                transform: scale(1); /* 回到原始大小 */
+                box-shadow: 0 0 20px rgba(102, 126, 234, 0.3); /* 淡阴影 */
+            }
+        }
+
+        /* 鼠标悬停时停止呼吸动画 */
+        .wave-button:hover {
+            animation: none; /* 停止呼吸动画 */
+            transform: scale(1.1); /* 悬停时放大 */
+        }
+
+        /* 波浪效果的伪元素 */
+        .wave-button::before {
+            content: ''; /* 空内容 */
+            position: absolute; /* 绝对定位 */
+            top: 50%; /* 垂直居中 */
+            left: 50%; /* 水平居中 */
+            width: 0; /* 初始宽度为0 */
+            height: 0; /* 初始高度为0 */
+            border-radius: 50%; /* 圆形 */
+            background: rgba(255, 255, 255, 0.3); /* 半透明白色背景 */
+            transform: translate(-50%, -50%); /* 精确居中 */
+            transition: width 0.6s, height 0.6s; /* 宽高变化的过渡动画 */
+        }
+
+        /* 点击时触发的波浪扩散效果 */
+        .wave-button:active::before {
+            width: 300px; /* 扩散到300px宽度 */
+            height: 300px; /* 扩散到300px高度 */
+        }
+
+        /* 按钮文字样式 */
+        .wave-button span {
+            position: relative; /* 相对定位 */
+            z-index: 1; /* 确保文字在波浪效果之上 */
+        }
+
+        /* 主容器样式 - 可自由调整布局 */
+        #app {
+            position: relative; /* 相对定位，为子元素提供定位基准 */
+            width: 100%; /* 占满宽度 */
+            height: 100vh; /* 占满整个视口高度 */
+            margin: 0; /* 移除默认外边距 */
+            padding: 0; /* 移除默认内边距 */
+        }
+
+        /* 波浪按钮位置 - 可自由调整 */
+        .wave-button {
+            position: absolute; /* 绝对定位 */
+            top: 210px; /* 改这个数值调整上下位置 */
+            left: 760px; /* 改这个数值调整左右位置 */
+            /* 其他样式保持不变 */
+        }
+
+        /* 页面基础样式重置 */
+        body {
+            margin: 0; /* 移除默认外边距 */
+            padding: 0; /* 移除默认内边距 */
+            background-image: url('马来西亚背景1.png'); /* 图片路径 */
+            background-size: cover; /* 覆盖整个页面 */
+            background-position: center; /* 居中显示 */
+            background-repeat: no-repeat; /* 不重复 */
+        }
+    </style>
+</head>
+<body>
+    <!-- 主应用容器 -->
+     <br>
+     <br>
+     <br>
+     <br>
+     <br>
+     <br>
+    <h1 style="font-size: 60px; color: rgb(27, 179, 151); text-align: center;">网络安全演示</h1>
+    <div id="app">
+        <!-- 页面标题 -->
+        <!-- 带波浪特效的圆形按钮 -->
+        <button class="wave-button">
+            <span>点击我</span>
+        </button>
+    </div>
+</body>
+</html>
