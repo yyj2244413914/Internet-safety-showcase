@@ -5,114 +5,438 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
     <style>
-        /* 波浪按钮的主要样式 */
-        .wave-button {
+        body {
+            margin: 0;
+            padding: 0;
+            background-image: url('starrysky.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }
+
+        #triangle-lost-in-space {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -999;
+            display: block;
+        }
+
+        /* 确保其他元素有正确的z-index */
+        h1 {
             position: relative;
-            width: 200px;
-            height: 200px;
+            z-index: 10;
+        }
+
+        .wave-button, .wave-border-button, .bubble-button {
+            position: absolute;
+            z-index: 10;
+        }
+
+        /* ========== 第一个按钮：带波浪特效的圆形按钮 ========== */
+        .wave-button {
+            position: absolute;
             border-radius: 50%;
-            background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
             border: none;
             color: white;
             font-size: 16px;
             font-weight: bold;
             cursor: pointer;
-            overflow: hidden;
+            overflow: visible;
             transition: transform 0.3s ease;
-            animation: breathing 2s ease-in-out infinite; /* 呼吸动画，2秒周期，无限循环 */
+            animation: breathing 2s ease-in-out infinite;
         }
 
-        /* 呼吸动画效果 */
+        .wave-button:hover {
+            animation: breathingHover 1.5s ease-in-out infinite;
+            transform: scale(1.1);
+        }
+
+        .wave-button::after {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            right: -10px;
+            bottom: -10px;
+            border-radius: 50%;
+            background: conic-gradient(
+                from 0deg,
+                var(--wave-color-1, #667eea) 0deg,
+                var(--wave-color-2, #764ba2) 60deg,
+                var(--wave-color-1, #667eea) 120deg,
+                var(--wave-color-2, #764ba2) 180deg,
+                var(--wave-color-1, #667eea) 240deg,
+                var(--wave-color-2, #764ba2) 300deg,
+                var(--wave-color-1, #667eea) 360deg
+            );
+            z-index: -1;
+            animation: waveRotate 3s linear infinite, wavePulse 2s ease-in-out infinite;
+        }
+
+        .wave-button:hover::after {
+            animation: waveRotateHover 5s linear infinite, wavePulseHover 3s ease-in-out infinite;
+            opacity: 0.8;
+        }
+
+        .wave-button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .wave-button:active::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .wave-button span {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ========== 第二个按钮：圆形波浪边界按钮 ========== */
+        .wave-border-button {
+            position: absolute;
+            border-radius: 50%;
+            border: none;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            overflow: visible;
+            transition: transform 0.3s ease;
+        }
+
+        .wave-border-button::before {
+            content: '';
+            position: absolute;
+            top: -5px;
+            left: -5px;
+            right: -5px;
+            bottom: -5px;
+            border-radius: 50%;
+            background: conic-gradient(
+                from 0deg,
+                transparent 0deg,
+                var(--wave-color-1, #ff6b6b) 30deg,
+                transparent 60deg,
+                var(--wave-color-2, #ee5a24) 90deg,
+                transparent 120deg,
+                var(--wave-color-1, #ff6b6b) 150deg,
+                transparent 180deg,
+                var(--wave-color-2, #ee5a24) 210deg,
+                transparent 240deg,
+                var(--wave-color-1, #ff6b6b) 270deg,
+                transparent 300deg,
+                var(--wave-color-2, #ee5a24) 330deg,
+                transparent 360deg
+            );
+            z-index: -1;
+            animation: waveRotate 2s linear infinite, wavePulse 1.5s ease-in-out infinite;
+        }
+
+        .wave-border-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px var(--hover-shadow, rgba(255, 107, 107, 0.4));
+        }
+
+        .wave-border-button:hover::before {
+            animation: waveRotate 3s linear infinite, wavePulse 2s ease-in-out infinite;
+        }
+
+        .wave-border-button:active {
+            transform: scale(0.98);
+        }
+
+        /* ========== 第三个按钮：气泡样式按钮 ========== */
+        .bubble-button {
+            position: absolute;
+            border-radius: 50%;
+            border: none;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            overflow: visible;
+            transition: all 0.3s ease;
+            animation: bubbleButtonFloat 3s ease-in-out infinite;
+        }
+
+        .bubble-button::before {
+            content: '';
+            position: absolute;
+            top: -30px;
+            left: -30px;
+            right: -30px;
+            bottom: -30px;
+            border-radius: 50%;
+            background: radial-gradient(
+                circle at 30% 30%,
+                rgba(255, 255, 255, 0.4) 0%,
+                rgba(255, 255, 255, 0.2) 30%,
+                transparent 70%
+            );
+            z-index: -1;
+            animation: bubbleFloat 2.5s ease-in-out infinite;
+        }
+
+        .bubble-button::after {
+            content: '';
+            position: absolute;
+            top: 12px;
+            left: 18px;
+            width: 35px;
+            height: 20px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.6);
+            animation: bubbleShine 1.5s ease-in-out infinite;
+        }
+
+        .bubble-button:hover {
+            transform: translateY(-8px) scale(1.1);
+            box-shadow: 0 20px 50px var(--bubble-shadow, rgba(102, 126, 234, 0.6));
+        }
+
+        .bubble-button:hover::before {
+            animation: bubbleFloatHover 2s ease-in-out infinite;
+        }
+
+        .bubble-button:active {
+            transform: translateY(-2px) scale(0.98);
+            box-shadow: 0 5px 15px var(--bubble-shadow, rgba(102, 126, 234, 0.4));
+        }
+
+        /* ========== 动画关键帧 ========== */
         @keyframes breathing {
             0% {
-                transform: scale(1); /* 原始大小 */
-                box-shadow: 0 0 20px rgba(102, 126, 234, 0.3); /* 淡阴影 */
+                transform: scale(1);
+                box-shadow: 0 0 20px rgba(102, 126, 234, 0.3);
             }
             50% {
-                transform: scale(1.30); /* 放大到105% */
-                box-shadow: 0 0 30px rgba(102, 126, 234, 0.6); /* 强阴影 */
+                transform: scale(1.05);
+                box-shadow: 0 0 30px rgba(102, 126, 234, 0.6);
             }
             100% {
-                transform: scale(1); /* 回到原始大小 */
-                box-shadow: 0 0 20px rgba(102, 126, 234, 0.3); /* 淡阴影 */
+                transform: scale(1);
+                box-shadow: 0 0 20px rgba(102, 126, 234, 0.3);
             }
         }
 
-        /* 鼠标悬停时停止呼吸动画 */
-        .wave-button:hover {
-            animation: none; /* 停止呼吸动画 */
-            transform: scale(1.1); /* 悬停时放大 */
+        @keyframes breathingHover {
+            0% {
+                transform: scale(1.1);
+                box-shadow: 0 0 25px rgba(102, 126, 234, 0.4);
+            }
+            50% {
+                transform: scale(1.12);
+                box-shadow: 0 0 35px rgba(102, 126, 234, 0.7);
+            }
+            100% {
+                transform: scale(1.1);
+                box-shadow: 0 0 25px rgba(102, 126, 234, 0.4);
+            }
         }
 
-        /* 波浪效果的伪元素 */
-        .wave-button::before {
-            content: ''; /* 空内容 */
-            position: absolute; /* 绝对定位 */
-            top: 50%; /* 垂直居中 */
-            left: 50%; /* 水平居中 */
-            width: 0; /* 初始宽度为0 */
-            height: 0; /* 初始高度为0 */
-            border-radius: 50%; /* 圆形 */
-            background: rgba(255, 255, 255, 0.3); /* 半透明白色背景 */
-            transform: translate(-50%, -50%); /* 精确居中 */
-            transition: width 0.6s, height 0.6s; /* 宽高变化的过渡动画 */
+        @keyframes waveRotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
-        /* 点击时触发的波浪扩散效果 */
-        .wave-button:active::before {
-            width: 300px; /* 扩散到300px宽度 */
-            height: 300px; /* 扩散到300px高度 */
+        @keyframes wavePulse {
+            0% { 
+                transform: scale(1) rotate(0deg);
+                opacity: 0.6;
+            }
+            50% { 
+                transform: scale(1.1) rotate(180deg);
+                opacity: 1;
+            }
+            100% { 
+                transform: scale(1) rotate(360deg);
+                opacity: 0.6;
+            }
         }
 
-        /* 按钮文字样式 */
-        .wave-button span {
-            position: relative; /* 相对定位 */
-            z-index: 1; /* 确保文字在波浪效果之上 */
+        @keyframes waveRotateHover {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
-        /* 主容器样式 - 可自由调整布局 */
-        #app {
-            position: relative; /* 相对定位，为子元素提供定位基准 */
-            width: 100%; /* 占满宽度 */
-            height: 100vh; /* 占满整个视口高度 */
-            margin: 0; /* 移除默认外边距 */
-            padding: 0; /* 移除默认内边距 */
+        @keyframes wavePulseHover {
+            0% { 
+                transform: scale(1.05) rotate(0deg);
+                opacity: 0.7;
+            }
+            50% { 
+                transform: scale(1.08) rotate(180deg);
+                opacity: 0.9;
+            }
+            100% { 
+                transform: scale(1.05) rotate(360deg);
+                opacity: 0.7;
+            }
         }
 
-        /* 波浪按钮位置 - 可自由调整 */
-        .wave-button {
-            position: absolute; /* 绝对定位 */
-            top: 210px; /* 改这个数值调整上下位置 */
-            left: 760px; /* 改这个数值调整左右位置 */
-            /* 其他样式保持不变 */
+        @keyframes bubbleButtonFloat {
+            0% { 
+                transform: translateY(0px) scale(1);
+                box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+            }
+            50% { 
+                transform: translateY(-15px) scale(1.05);
+                box-shadow: 0 15px 35px rgba(102, 126, 234, 0.5);
+            }
+            100% { 
+                transform: translateY(0px) scale(1);
+                box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+            }
         }
 
-        /* 页面基础样式重置 */
-        body {
-            margin: 0; /* 移除默认外边距 */
-            padding: 0; /* 移除默认内边距 */
-            background-image: url('马来西亚背景1.png'); /* 图片路径 */
-            background-size: cover; /* 覆盖整个页面 */
-            background-position: center; /* 居中显示 */
-            background-repeat: no-repeat; /* 不重复 */
+        @keyframes bubbleFloat {
+            0% { 
+                transform: translateY(0px) scale(1);
+                opacity: 0.6;
+            }
+            50% { 
+                transform: translateY(-20px) scale(1.15);
+                opacity: 1;
+            }
+            100% { 
+                transform: translateY(0px) scale(1);
+                opacity: 0.6;
+            }
+        }
+
+        @keyframes bubbleShine {
+            0% { opacity: 0.2; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1.5); }
+            100% { opacity: 0.2; transform: scale(0.8); }
+        }
+
+        @keyframes bubbleFloatHover {
+            0% { 
+                transform: translateY(-8px) scale(1.08);
+                opacity: 0.7;
+            }
+            50% { 
+                transform: translateY(-25px) scale(1.2);
+                opacity: 1;
+            }
+            100% { 
+                transform: translateY(-8px) scale(1.08);
+                opacity: 0.7;
+            }
+        }
+
+        .tech-title {
+            font-size: 60px;
+            position: absolute;
+            top: 50px;
+            left: 180px;
+            color: transparent;
+            font-family: 'Arial Black', sans-serif;
+            font-weight: bold;
+            -webkit-text-stroke: 2px #00ff88;
+            text-stroke: 2px #00ff88;
+            filter: drop-shadow(0 0 10px #00ff88);
+            animation: techGlow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes techGlow {
+            0% {
+                -webkit-text-stroke: 2px #00ff88;
+                filter: drop-shadow(0 0 10px #00ff88);
+            }
+            100% {
+                -webkit-text-stroke: 2px #00ffff;
+                filter: drop-shadow(0 0 20px #00ffff);
+            }
         }
     </style>
 </head>
 <body>
-    <!-- 主应用容器 -->
-     <br>
-     <br>
-     <br>
-     <br>
-     <br>
-     <br>
-    <h1 style="font-size: 60px; color: rgb(27, 179, 151); text-align: center;">网络安全演示</h1>
+    <!-- Canvas必须在这里 -->
+    <canvas id="triangle-lost-in-space"></canvas>
+    
+    <h1 class="tech-title">SecureDataFlow:基于TEE的安全数据流通系统</h1>
+    
     <div id="app">
-        <!-- 页面标题 -->
         <!-- 带波浪特效的圆形按钮 -->
-        <button class="wave-button">
+        <button class="wave-button" style="
+            width: 200px; 
+            height: 200px; 
+            top: 290px; 
+            left: 760px;
+            background: linear-gradient(45deg, #e8e8e8 0%, #c0c0c0 100%);
+            --wave-color-1: #d3d3d3;
+            --wave-color-2: #a8a8a8;
+        ">
             <span>点击我</span>
         </button>
+
+        <!-- 波浪线边界按钮 -->
+        <button class="wave-border-button" style="
+            width: 150px;
+            height: 150px;
+            top: 230px; 
+            left: 130px; 
+            background: linear-gradient(45deg, #f5f5f5, #d0d0d0);
+            --wave-color-1: #e0e0e0;
+            --wave-color-2: #b8b8b8;
+            --hover-shadow: rgba(192, 192, 192, 0.4);
+        ">SecureDataFlow</button>
+
+        <!-- 气泡按钮 1-->
+        <button class="bubble-button" style="
+            width: 160px;
+            height: 160px;
+            font-size: 18px;
+            top: 600px;
+            left: 500px;
+            background: linear-gradient(45deg, #f8f8f8 0%, #e5e5e5 100%);
+            box-shadow: 0 8px 25px rgba(220, 220, 220, 0.3);
+            --bubble-shadow: rgba(200, 200, 200, 0.5);
+        ">TEE</button>
+
+        <!-- 气泡按钮 2-->
+        <button class="bubble-button" style="
+            width: 120px;
+            height: 120px;
+            font-size: 20px;
+            top: 200px;
+            left: 1200px;
+            background: linear-gradient(45deg, #eeeeee 0%, #cccccc 100%);
+            box-shadow: 0 8px 25px rgba(210, 210, 210, 0.3);
+            --bubble-shadow: rgba(180, 180, 180, 0.5);
+        ">登陆界面</button>
     </div>
+    
+    <!-- 确保加载顺序正确 -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="paper-full.min.js"></script>
+    
+    <!-- 调试脚本 -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded');
+            console.log('jQuery:', typeof $ !== 'undefined');
+            console.log('Paper.js:', typeof paper !== 'undefined');
+            console.log('Canvas element:', document.getElementById('triangle-lost-in-space'));
+        });
+    </script>
+    
+    <script src="base.js"></script>
+    <script src="canvas.js"></script>
 </body>
 </html>
