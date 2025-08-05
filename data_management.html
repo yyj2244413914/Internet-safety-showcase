@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SecureDataFlow 数据管理</title>
+  <!-- 引入外部资源 -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+
+  <!-- Tailwind 配置 -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#165DFF',
+            success: '#52C41A',
+            dark: '#1D2129',
+            'dark-2': '#4E5969',
+            'light-1': '#F2F3F5',
+            'light-2': '#E5E6EB'
+          },
+          fontFamily: {
+            inter: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      }
+    }
+  </script>
+
+  <!-- 自定义工具类 -->
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .card-shadow {
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      }
+      .gradient-bg {
+        background: linear-gradient(135deg, #165DFF 0%, #0E42D2 100%);
+      }
+      .pulse-animation {
+        animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+      }
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+      }
+      .tree-item {
+        padding: 0.375rem 0.75rem;
+        margin: 0.25rem 0;
+        border-radius: 0.375rem;
+        cursor: pointer; 
+        display: flex; 
+        align-items: center; 
+        gap: 0.5rem; 
+        transition: all 0.15s ease;
+      }
+      .tree-item.active {
+        background-color: transparent; 
+        color: inherit;
+        border-left: none;
+        padding-left: 0.75rem;
+      }
+      .tree-item.active .name-span {
+        background-color: #e8f3ff;
+        color: #165DFF;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-weight: 500;
+      }
+      .tree-children {
+        padding-left: 1.75rem;
+        margin-top: 0.25rem;
+        margin-bottom: 0.25rem;
+        border-left: 1px dashed #d9d9d9;
+        margin-left: 0.75rem;
+      }
+      .tree-toggle {
+        cursor: pointer;
+        transition: transform 0.2s ease;
+      }
+      .tree-toggle.collapsed {
+        transform: rotate(-90deg);
+      }
+      .tree-item:hover {
+        background-color: #f2f3f5;
+      }
+      .permission-badge {
+        padding: 0.25rem 0.5rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+      }
+    }
+  </style>
+</head>
+
+<body class="font-inter bg-gray-50 text-dark min-h-screen flex flex-col">
+  <!-- 顶部导航栏 -->
+  <header class="bg-white shadow-sm fixed w-full z-50 transition-all duration-300" id="header">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between items-center h-16">
+        <!-- 左侧Logo和标题 -->
+        <div class="flex items-center">
+          <div class="flex-shrink-0 flex items-center">
+            <div class="w-8 h-8 rounded-md gradient-bg flex items-center justify-center">
+              <i class="fa fa-shield text-white"></i>
+            </div>
+            <span class="ml-2 text-lg font-semibold text-dark">SecureDataFlow 数据管理</span>
+          </div>
+        </div>
+
+        <!-- 右侧工具栏 -->
+        <div class="flex items-center space-x-4">
+          <!-- 刷新按钮 -->
+          <button class="p-2 rounded-full hover:bg-light-1 transition-colors" id="headerRefreshBtn">
+            <i class="fa fa-refresh text-dark-2"></i>
+          </button>
+
+          <!-- 用户信息 -->
+          <div class="flex items-center">
+            <img class="h-8 w-8 rounded-full object-cover" src="https://picsum.photos/id/1005/200/200" alt="用户头像">
+            <span class="ml-2 text-sm font-medium hidden md:block">管理员</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主内容区 -->
+  <main class="flex-1 pt-20 pb-10 flex">
+    <!-- 侧边栏 - 数据目录浏览器 -->
+    <aside
+      class="w-[410px] bg-white shadow-sm fixed h-[calc(100vh-5rem)] overflow-y-auto transition-all duration-300 z-40"
+      id="sidebar">
+      <!-- 添加拖动调节手柄 -->
+      <div class="absolute top-0 right-0 w-1 h-full bg-gray-200 cursor-col-resize" id="sidebarResizer"></div>
+      <div class="p-4 border-b border-light-2">
+        <div class="relative">
+          <input type="text" id="treeSearch" placeholder="搜索数据表..."
+            class="w-full pl-10 pr-4 py-2 rounded-lg border border-light-2 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary text-sm">
+          <i class="fa fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-dark-2"></i>
+        </div>
+      </div>
+      <div class="p-4" id="dataTree">
+        <!-- 树状结构将通过JS动态生成 -->
+        <div class="text-center text-dark-2 py-8">
+          <i class="fa fa-folder-open-o text-2xl mb-2 block"></i>
+          <p>加载数据表结构中...</p>
+        </div>
+      </div>
+    </aside>
+
+    <!-- 主内容区域 -->
+    <div class="ml-[410px] flex-1 transition-all duration-300" id="mainContent">
+      <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <!-- 页面标题和操作区 -->
+        <div class="mb-6 flex flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold text-dark">数据管理模块</h1>
+            <p class="text-dark-2 mt-1">统一展示与管理平台可访问的数据表结构、字段权限与访问记录</p>
+          </div>
+          <div class="flex gap-3">
+            <div class="relative">
+              <input type="text" id="globalSearch" placeholder="全局搜索字段或表名..."
+                class="pl-10 pr-4 py-2 rounded-lg border border-light-2 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary text-sm w-full sm:w-64">
+              <i class="fa fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-dark-2"></i>
+            </div>
+            <button id="contentRefreshBtn"
+              class="p-2 rounded-lg border border-light-2 hover:bg-light-1 transition-colors">
+              <i class="fa fa-refresh text-dark-2"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- 内容标签页 -->
+        <div class="border-b border-light-2 mb-6">
+          <ul class="flex flex-wrap -mb-px" id="contentTabs">
+            <li class="mr-2"><button
+                class="content-tab-btn active py-4 px-4 text-sm font-medium text-primary border-b-2 border-primary"
+                data-tab="permission-matrix">权限矩阵管理</button></li>
+            <li class="mr-2"><button
+                class="content-tab-btn py-4 px-4 text-sm font-medium text-dark-2 border-b-2 border-transparent hover:text-dark hover:border-light-2"
+                data-tab="access-audit">数据调取审计</button></li>
+          </ul>
+        </div>
+
+        <!-- 权限矩阵管理 -->
+        <div class="content-tab active" id="permission-matrix">
+          <div class="bg-white rounded-xl p-6 card-shadow mb-6">
+            <div class="flex justify-between items-center mb-6">
+              <h2 class="text-lg font-semibold">权限矩阵</h2>
+              <div class="text-sm text-dark-2">当前选中表: <span id="currentTableName"
+                  class="font-medium text-dark">未选择</span></div>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-light-2" id="permissionMatrixTable">
+                <thead class="bg-light-1">
+                  <tr>
+                    <th scope="col"
+                      class="px-6 py-3 text-left text-xs font-medium text-dark-2 uppercase tracking-wider">部门</th>
+                    <th scope="col"
+                      class="px-6 py-3 text-left text-xs font-medium text-dark-2 uppercase tracking-wider">查看权限</th>
+                    <th scope="col"
+                      class="px-6 py-3 text-left text-xs font-medium text-dark-2 uppercase tracking-wider">编辑权限</th>
+                    <th scope="col"
+                      class="px-6 py-3 text-left text-xs font-medium text-dark-2 uppercase tracking-wider">导出权限</th>
+                    <th scope="col"
+                      class="px-6 py-3 text-left text-xs font-medium text-dark-2 uppercase tracking-wider">管理权限</th>
+                  </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-light-2" id="permissionMatrixBody">
+                  <!-- 权限矩阵内容将通过JS动态生成 -->
+                  <tr>
+                    <td colspan="5" class="text-center py-10 text-dark-2">请从左侧选择数据表查看权限矩阵</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- 数据调取审计 -->
+        <div class="content-tab hidden" id="access-audit">
+          <div class="bg-white rounded-xl p-6 card-shadow">
+            <div class="flex justify-between items-center mb-6">
+              <h2 class="text-lg font-semibold">数据调取审计记录</h2>
+              <div class="flex gap-2">
+                <select id="auditFilterTable"
+                  class="text-sm border border-light-2 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary">
+                  <option value="all">所有表</option>
+                  <!-- 表选项将通过JS动态生成 -->
+                </select>
+                <select id="auditFilterUser"
+                  class="text-sm border border-light-2 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary">
+                  <option value="all">所有用户</option>
+                  <!-- 用户选项将通过JS动态生成 -->
+                </select>
+              </div>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-light-2">
+                <thead class="bg-light-1">
+                  <tr>
+                    <th scope="col"
+                      class="px-6 py-3 text-left text-xs font-medium text-dark-2 uppercase tracking-wider">用户</th>
+                    <th scope="col"
+                      class="px-6 py-3 text-left text-xs font-medium text-dark-2 uppercase tracking-wider">数据表</th>
+                    <th scope="col"
+                      class="px-6 py-3 text-left text-xs font-medium text-dark-2 uppercase tracking-wider">操作</th>
+                    <th scope="col"
+                      class="px-6 py-3 text-left text-xs font-medium text-dark-2 uppercase tracking-wider">时间</th>
+                    <th scope="col"
+                      class="px-6 py-3 text-left text-xs font-medium text-dark-2 uppercase tracking-wider">IP地址</th>
+                  </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-light-2" id="auditLogBody">
+                  <!-- 审计日志内容将通过JS动态生成 -->
+                  <tr>
+                    <td colspan="5" class="text-center py-10 text-dark-2">加载审计记录中...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="flex justify-between items-center mt-4">
+              <div class="text-sm text-dark-2">显示 1 至 10 条，共 <span id="totalAuditCount">0</span> 条记录</div>
+              <div class="flex gap-1">
+                <button class="px-3 py-1 text-sm border border-light-2 rounded hover:bg-light-1 disabled:opacity-50"
+                  id="prevPage" disabled>上一页</button>
+                <button class="px-3 py-1 text-sm border border-light-2 rounded hover:bg-light-1"
+                  id="nextPage">下一页</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- 页脚 -->
+  <footer class="bg-white border-t border-light-2 py-6">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex flex-col md:flex-row justify-between items-center">
+        <div class="text-dark-2 text-sm mb-4 md:mb-0">
+          © 2025 SecureDataFlow. 保留所有权利.
+        </div>
+        <div class="flex space-x-6">
+          <a href="#" class="text-dark-2 hover:text-primary text-sm">回到主页</a>
+          <a href="#" class="text-dark-2 hover:text-primary text-sm">技术文档</a>
+          <a href="#" class="text-dark-2 hover:text-primary text-sm">联系我们</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- JavaScript -->
+  <script>
+    // 全局变量
+    let currentPage = 1;
+    const pageSize = 10;
+    let totalAuditLogs = 0;
+    let allHiveTables = [];
+    let currentSelectedTableId = null;
+    // 后端API基础URL
+    const API_BASE_URL = 'http://your-backend-api.com/api';
+
+    // 初始化函数
+    function initializeDashboard() {
+      // 滚动事件监听（头部阴影效果）
+      window.addEventListener('scroll', function () {
+        const header = document.getElementById('header');
+        if (window.scrollY > 10) {
+          header.classList.add('shadow');
+        } else {
+          header.classList.remove('shadow');
+        }
+      });
+
+      // 初始化标签页切换
+      initTabs();
+      
+      // 初始化侧边栏拖动
+      initSidebarResizer();
+      
+      // 初始化审计日志分页
+      initAuditPagination();
+      
+      // 初始化筛选器
+      initFilters();
+    }
+
+    // 标签页切换功能
+    function initTabs() {
+      const tabButtons = document.querySelectorAll('.content-tab-btn');
+      tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+          // 移除所有活动状态
+          tabButtons.forEach(btn => {
+            btn.classList.remove('active', 'text-primary', 'border-primary');
+            btn.classList.add('text-dark-2', 'border-transparent', 'hover:text-dark', 'hover:border-light-2');
+          });
+          
+          // 添加当前活动状态
+          button.classList.add('active', 'text-primary', 'border-primary');
+          button.classList.remove('text-dark-2', 'border-transparent', 'hover:text-dark', 'hover:border-light-2');
+          
+          // 隐藏所有内容
+          document.querySelectorAll('.content-tab').forEach(tab => {
+            tab.classList.add('hidden');
+            tab.classList.remove('active');
+          });
+          
+          // 显示当前内容
+          const tabId = button.getAttribute('data-tab');
+          const activeTab = document.getElementById(tabId);
+          activeTab.classList.remove('hidden');
+          activeTab.classList.add('active');
+          
+          // 如果切换到审计标签，加载数据
+          if (tabId === 'access-audit') {
+            fetchAuditLogs(currentPage, pageSize);
+          }
+        });
+      });
+    }
+
+    // 侧边栏拖动调整功能
+    function initSidebarResizer() {
+      const sidebar = document.getElementById('sidebar');
+      const mainContent = document.getElementById('mainContent');
+      const resizer = document.getElementById('sidebarResizer');
+      let isResizing = false;
+
+      resizer.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        document.body.style.cursor = 'col-resize';
+        e.preventDefault();
+      });
+
+      document.addEventListener('mousemove', (e) => {
+        if (!isResizing) return;
+        
+        // 限制最小宽度为200px，最大宽度为800px
+        const newWidth = e.clientX - sidebar.getBoundingClientRect().left;
+        if (newWidth >= 200 && newWidth <= 800) {
+          sidebar.style.width = `${newWidth}px`;
+          mainContent.style.marginLeft = `${newWidth}px`;
+        }
+      });
+
+      document.addEventListener('mouseup', () => {
+        isResizing = false;
+        document.body.style.cursor = '';
+      });
+    }
+
+    // 审计日志分页功能
+    function initAuditPagination() {
+      document.getElementById('prevPage').addEventListener('click', () => {
+        if (currentPage > 1) {
+          currentPage--;
+          fetchAuditLogs(currentPage, pageSize);
+        }
+      });
+
+      document.getElementById('nextPage').addEventListener('click', () => {
+        if (currentPage * pageSize < totalAuditLogs) {
+          currentPage++;
+          fetchAuditLogs(currentPage, pageSize);
+        }
+      });
+    }
+
+    // 筛选器初始化
+    function initFilters() {
+      const tableFilter = document.getElementById('auditFilterTable');
+      const userFilter = document.getElementById('auditFilterUser');
+      
+      [tableFilter, userFilter].forEach(filter => {
+        filter.addEventListener('change', () => {
+          currentPage = 1; // 重置为第一页
+          fetchAuditLogs(currentPage, pageSize, {
+            table: tableFilter.value !== 'all' ? tableFilter.value : '',
+            user: userFilter.value !== 'all' ? userFilter.value : ''
+          });
+        });
+      });
+    }
+
+    // 生成树状结构
+    function renderTree(data, container) {
+      container.innerHTML = '';
+      
+      data.forEach(item => {
+        const treeItem = document.createElement('div');
+        treeItem.className = 'tree-item';
+        treeItem.dataset.id = item.id;
+        treeItem.dataset.type = item.type;
+        
+        // 图标元素
+        const icon = document.createElement('i');
+        if (item.type === 'database') {
+          icon.className = 'fa fa-database text-dark-2';
+        } else {
+          icon.className = 'fa fa-table text-primary';
+        }
+        
+        // 名称元素
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'name-span flex-1';
+        nameSpan.textContent = item.name;
+        
+        // 描述元素（仅表显示）
+        let descSpan = null;
+        if (item.type === 'table' && item.description) {
+          descSpan = document.createElement('span');
+          descSpan.className = 'text-xs text-dark-2 hidden md:inline-block';
+          descSpan.textContent = item.description;
+        }
+        
+        // 组装元素
+        treeItem.appendChild(icon);
+        treeItem.appendChild(nameSpan);
+        if (descSpan) treeItem.appendChild(descSpan);
+        
+        // 如果有子节点，添加展开/折叠按钮
+        if (item.children && item.children.length > 0) {
+          const toggle = document.createElement('i');
+          toggle.className = 'fa fa-caret-right tree-toggle';
+          treeItem.insertBefore(toggle, icon);
+          
+          // 子节点容器
+          const childrenContainer = document.createElement('div');
+          childrenContainer.className = 'tree-children hidden';
+          renderTree(item.children, childrenContainer);
+          
+          treeItem.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggle.classList.toggle('collapsed');
+            childrenContainer.classList.toggle('hidden');
+          });
+          
+          treeItem.appendChild(childrenContainer);
+        } else if (item.type === 'table') {
+          // 表点击事件 - 加载权限矩阵
+          treeItem.addEventListener('click', (e) => {
+            e.stopPropagation();
+            // 移除其他选中状态
+            document.querySelectorAll('.tree-item.active').forEach(el => {
+              el.classList.remove('active');
+            });
+            // 添加当前选中状态
+            treeItem.classList.add('active');
+            // 加载权限矩阵
+            loadPermissionMatrix(item.id, item.name);
+            currentSelectedTableId = item.id;
+          });
+        }
+        
+        container.appendChild(treeItem);
+      });
+    }
+
+    // 加载权限矩阵
+    function loadPermissionMatrix(tableId, tableName) {
+      document.getElementById('currentTableName').textContent = tableName;
+      const matrixBody = document.getElementById('permissionMatrixBody');
+      
+      // 先显示加载状态
+      matrixBody.innerHTML = '<tr><td colspan="5" class="text-center py-10 text-dark-2"><i class="fa fa-spinner fa-spin mr-2"></i>加载权限矩阵中...</td></tr>';
+      
+      // 调用API获取权限矩阵
+      fetchPermissionMatrix(tableId)
+        .then(matrix => {
+          if (matrix.length === 0) {
+            matrixBody.innerHTML = '<tr><td colspan="5" class="text-center py-10 text-dark-2">该表暂无权限配置</td></tr>';
+            return;
+          }
+          
+          // 渲染权限矩阵
+          matrixBody.innerHTML = '';
+          matrix.forEach(item => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td class="px-6 py-4 whitespace-nowrap">${item.department}</td>
+              <td class="px-6 py-4 whitespace-nowrap">${renderPermissionBadge(item.view)}</td>
+              <td class="px-6 py-4 whitespace-nowrap">${renderPermissionBadge(item.edit)}</td>
+              <td class="px-6 py-4 whitespace-nowrap">${renderPermissionBadge(item.export)}</td>
+              <td class="px-6 py-4 whitespace-nowrap">${renderPermissionBadge(item.manage)}</td>
+            `;
+            matrixBody.appendChild(row);
+          });
+        })
+        .catch(() => {
+          matrixBody.innerHTML = '<tr><td colspan="5" class="text-center py-10 text-dark-2">加载权限矩阵失败</td></tr>';
+        });
+    }
+
+    // 渲染权限徽章
+    function renderPermissionBadge(hasPermission) {
+      return hasPermission 
+        ? '<span class="permission-badge bg-success/10 text-success">已授权</span>'
+        : '<span class="permission-badge bg-light-2 text-dark-2">未授权</span>';
+    }
+
+    // 加载审计日志
+    function renderAuditLogs(logs) {
+      const logBody = document.getElementById('auditLogBody');
+      
+      if (logs.length === 0) {
+        logBody.innerHTML = '<tr><td colspan="5" class="text-center py-10 text-dark-2">暂无审计记录</td></tr>';
+        return;
+      }
+      
+      logBody.innerHTML = '';
+      logs.forEach(log => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td class="px-6 py-4 whitespace-nowrap">${log.user}</td>
+          <td class="px-6 py-4 whitespace-nowrap">${log.tableName}</td>
+          <td class="px-6 py-4 whitespace-nowrap">${renderActionBadge(log.action)}</td>
+          <td class="px-6 py-4 whitespace-nowrap">${new Date(log.timestamp).toLocaleString()}</td>
+          <td class="px-6 py-4 whitespace-nowrap">${log.ipAddress}</td>
+        `;
+        logBody.appendChild(row);
+      });
+    }
+
+    // 渲染操作类型徽章
+    function renderActionBadge(action) {
+      const actionMap = {
+        'view': { class: 'bg-primary/10 text-primary', text: '查看' },
+        'edit': { class: 'bg-blue-100 text-blue-600', text: '编辑' },
+        'export': { class: 'bg-purple-100 text-purple-600', text: '导出' },
+        'delete': { class: 'bg-red-100 text-red-600', text: '删除' }
+      };
+      
+      const config = actionMap[action] || { class: 'bg-gray-100 text-gray-600', text: action };
+      return `<span class="permission-badge ${config.class}">${config.text}</span>`;
+    }
+
+    // 初始化数据管理模块
+    async function initDataManagementModule() {
+      const dataTree = document.getElementById('dataTree');
+      dataTree.innerHTML = '<div class="text-center text-dark-2 py-8"><i class="fa fa-spinner fa-spin text-2xl mb-2 block"></i><p>加载数据表结构中...</p></div>';
+      
+      try {
+        // 获取Hive表结构
+        const tables = await fetchHiveTables();
+        allHiveTables = tables;
+        renderTree(tables, dataTree);
+        
+        // 初始化表筛选器
+        initTableFilter(tables);
+        
+        // 加载审计日志
+        await fetchAuditLogs(currentPage, pageSize);
+      } catch (error) {
+        console.error('初始化失败:', error);
+        dataTree.innerHTML = '<div class="text-center text-dark-2 py-8"><i class="fa fa-exclamation-triangle text-2xl mb-2 block text-orange-500"></i><p>加载失败，请点击刷新重试</p></div>';
+      }
+    }
+
+    // 初始化表筛选器
+    function initTableFilter(tables) {
+      const filter = document.getElementById('auditFilterTable');
+      // 保留"所有表"选项
+      const allOption = filter.querySelector('option[value="all"]');
+      filter.innerHTML = '';
+      filter.appendChild(allOption);
+      
+      // 递归收集所有表
+      function collectTables(items, parentName = '') {
+        let result = [];
+        items.forEach(item => {
+          if (item.type === 'table') {
+            result.push({
+              id: item.id,
+              name: parentName ? `${parentName}.${item.name}` : item.name
+            });
+          } else if (item.children && item.children.length > 0) {
+            const newParent = parentName ? `${parentName}.${item.name}` : item.name;
+            result = [...result, ...collectTables(item.children, newParent)];
+          }
+        });
+        return result;
+      }
+      
+      const allTables = collectTables(tables);
+      allTables.forEach(table => {
+        const option = document.createElement('option');
+        option.value = table.id;
+        option.textContent = table.name;
+        filter.appendChild(option);
+      });
+    }
+
+    // DOM加载完成后初始化
+    document.addEventListener('DOMContentLoaded', async function () {
+      initializeDashboard();
+
+      // API调用函数 - 获取Hive表结构
+      window.fetchHiveTables = async function() {
+        const response = await fetch(`${API_BASE_URL}/hive/tables`);
+        if (!response.ok) throw new Error('Network response was not ok');
+        return await response.json();
+      };
+
+      // API调用函数 - 获取权限矩阵
+      window.fetchPermissionMatrix = async function(tableId) {
+        const response = await fetch(`${API_BASE_URL}/permissions/matrix?tableId=${tableId}`);
+        if (!response.ok) throw new Error('Network response was not ok');
+        return await response.json();
+      };
+
+      // API调用函数 - 获取审计日志
+      window.fetchAuditLogs = async function(page = 1, pageSize = 10, filters = {}) {
+        const queryParams = new URLSearchParams({
+          page,
+          pageSize,
+          ...filters
+        });
+        const response = await fetch(`${API_BASE_URL}/audit/logs?${queryParams}`);
+        if (!response.ok) throw new Error('Network response was not ok');
+        const data = await response.json();
+        totalAuditLogs = data.total;
+        renderAuditLogs(data.items);
+        updatePaginationControls();
+        return { logs: data.items, total: data.total };
+      };
+
+      // 更新分页控件状态
+      function updatePaginationControls() {
+        const prevBtn = document.getElementById('prevPage');
+        const nextBtn = document.getElementById('nextPage');
+        const countEl = document.getElementById('totalAuditCount');
+        
+        countEl.textContent = totalAuditLogs;
+        prevBtn.disabled = currentPage <= 1;
+        nextBtn.disabled = currentPage * pageSize >= totalAuditLogs;
+      }
+
+      // 刷新按钮功能
+      const headerRefreshBtn = document.getElementById('headerRefreshBtn');
+      if (headerRefreshBtn) {
+        headerRefreshBtn.addEventListener('click', function () {
+          const icon = headerRefreshBtn.querySelector('i');
+          icon.classList.add('fa-spin');
+
+          setTimeout(() => {
+            icon.classList.remove('fa-spin');
+            initDataManagementModule();
+          }, 800);
+        });
+      }
+
+      const contentRefreshBtn = document.getElementById('contentRefreshBtn');
+      if (contentRefreshBtn) {
+        contentRefreshBtn.addEventListener('click', function () {
+          const icon = contentRefreshBtn.querySelector('i');
+          icon.classList.add('fa-spin');
+
+          setTimeout(() => {
+            icon.classList.remove('fa-spin');
+            initDataManagementModule();
+          }, 800);
+        });
+      }
+
+      // 初始化模块
+      initDataManagementModule();
+    });
+  </script>
+</body>
+</html>
