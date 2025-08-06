@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SecureDataFlow 审计与合规</title>
+  <!-- 引入外部资源 -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <!-- 引入日期选择器 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <!-- 引入jsPDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
+  <!-- Tailwind 配置 -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#165DFF',
+            success: '#52C41A',
+            warning: '#FAAD14',
+            danger: '#F53F3F',
+            dark: '#1D2129',
+            'dark-2': '#4E5969',
+            'light-1': '#F2F3F5',
+            'light-2': '#E5E6EB'
+          },
+          fontFamily: {
+            inter: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      }
+    }
+  </script>
+
+  <!-- 自定义工具类 -->
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .log-type-data { background-color: rgba(22, 93, 255, 0.1); color: #165DFF; }
+      .log-type-compute { background-color: rgba(82, 196, 26, 0.1); color: #52C41A; }
+      .log-type-permission { background-color: rgba(250, 173, 20, 0.1); color: #FAAD14; }
+      .log-type-system { background-color: rgba(117, 121, 255, 0.1); color: #7579FF; }
+      
+      .alert-critical { border-left: 4px solid #F53F3F; }
+      .alert-high { border-left: 4px solid #FAAD14; }
+      .alert-medium { border-left: 4px solid #165DFF; }
+      
+      .chain-verified { background-color: rgba(82, 196, 26, 0.1); }
+      .chain-pending { background-color: rgba(250, 173, 20, 0.1); }
+    }
+  </style>
+</head>
+
+<body class="font-inter bg-gray-50 text-dark min-h-screen flex flex-col">
+  <!-- 顶部导航栏 -->
+  <header class="bg-white shadow-sm fixed w-full z-50 transition-all duration-300" id="header">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between items-center h-16">
+        <!-- 左侧Logo和标题 -->
+        <div class="flex items-center">
+          <div class="flex-shrink-0 flex items-center">
+            <div class="w-8 h-8 rounded-md gradient-bg flex items-center justify-center">
+              <i class="fa fa-shield text-white"></i>
+            </div>
+            <span class="ml-2 text-lg font-semibold text-dark">SecureDataFlow 审计与合规</span>
+          </div>
+        </div>
+
+        <!-- 右侧工具栏 -->
+        <div class="flex items-center space-x-4">
+          <!-- 最后更新时间 -->
+          <span class="text-sm text-dark-2 hidden sm:block" id="lastUpdate">最后更新: 刚刚</span>
+          
+          <!-- 刷新按钮 -->
+          <button class="p-2 rounded-full hover:bg-light-1 transition-colors" id="refreshBtn">
+            <i class="fa fa-refresh text-dark-2"></i>
+          </button>
+
+          <!-- 用户信息 -->
+          <div class="flex items-center">
+            <img class="h-8 w-8 rounded-full object-cover" src="https://randomuser.me/api/portraits/men/32.jpg" alt="用户头像">
+            <span class="ml-2 text-sm font-medium hidden md:block">审计管理员</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主内容区 -->
+  <main class="flex-1 pt-20 pb-10">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+      <!-- 页面标题 -->
+      <div class="mb-8">
+        <h1 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold text-dark">审计与合规中心</h1>
+        <p class="text-dark-2 mt-1">记录所有用户行为，支持操作追踪与合规检查</p>
+      </div>
+
+      <!-- 过滤条件 -->
+      <div class="bg-white rounded-xl p-6 card-shadow mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-dark-2 mb-1">时间范围</label>
+            <input type="text" id="dateRange" class="w-full px-3 py-2 border border-light-2 rounded-md text-sm" placeholder="选择日期范围">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-dark-2 mb-1">操作类型</label>
+            <select id="logType" class="w-full px-3 py-2 border border-light-2 rounded-md text-sm">
+              <option value="">全部类型</option>
+              <option value="data">数据调取</option>
+              <option value="compute">计算任务</option>
+              <option value="permission">权限变更</option>
+              <option value="system">系统操作</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-dark-2 mb-1">用户</label>
+            <select id="logUser" class="w-full px-3 py-2 border border-light-2 rounded-md text-sm">
+              <option value="">全部用户</option>
+              <option value="user1">张伟 (数据安全部)</option>
+              <option value="user2">李娜 (研发中心)</option>
+              <option value="user3">王强 (市场部)</option>
+            </select>
+          </div>
+          <div class="flex items-end">
+            <button class="w-full bg-primary text-white py-2 px-4 rounded-md hover:bg-opacity-90 transition" id="filterBtn">
+              <i class="fa fa-filter mr-2"></i>筛选
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 三栏布局 -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- 日志中心 -->
+        <div class="lg:col-span-2">
+          <div class="bg-white rounded-xl card-shadow overflow-hidden">
+            <div class="border-b border-light-2 px-6 py-4 flex justify-between items-center">
+              <h2 class="font-semibold text-lg">
+                <i class="fa fa-history text-primary mr-2"></i>操作日志
+              </h2>
+              <button class="text-sm text-primary hover:text-opacity-80" id="exportCsvBtn">
+                <i class="fa fa-download mr-1"></i>导出CSV
+              </button>
+            </div>
+            <div class="divide-y divide-light-2" id="logContainer">
+              <!-- 日志项将通过JavaScript动态生成 -->
+              <div class="px-6 py-4 text-center text-dark-2">
+                <i class="fa fa-spinner fa-spin mr-2"></i>正在加载日志数据...
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 告警板块 -->
+        <div>
+          <div class="bg-white rounded-xl card-shadow overflow-hidden mb-6">
+            <div class="border-b border-light-2 px-6 py-4">
+              <h2 class="font-semibold text-lg">
+                <i class="fa fa-bell text-danger mr-2"></i>安全告警
+              </h2>
+            </div>
+            <div class="divide-y divide-light-2" id="alertsContainer">
+              <!-- 告警项将通过JavaScript动态生成 -->
+              <div class="px-6 py-4 text-center text-dark-2">
+                <i class="fa fa-spinner fa-spin mr-2"></i>正在加载告警数据...
+              </div>
+            </div>
+          </div>
+
+          <!-- 链上存证 -->
+          <div class="bg-white rounded-xl card-shadow overflow-hidden">
+            <div class="border-b border-light-2 px-6 py-4">
+              <h2 class="font-semibold text-lg">
+                <i class="fa fa-link text-primary mr-2"></i>区块链存证
+              </h2>
+            </div>
+            <div class="px-6 py-4">
+              <div class="flex justify-between items-center mb-4">
+                <span class="text-sm font-medium">今日存证数量</span>
+                <span class="text-lg font-bold" id="blockchainCount">--</span>
+              </div>
+              
+              <div class="space-y-3" id="blockchainContainer">
+                <!-- 区块链存证项将通过JavaScript动态生成 -->
+                <div class="text-center text-dark-2 text-sm py-4">
+                  <i class="fa fa-spinner fa-spin mr-2"></i>正在加载区块链数据...
+                </div>
+              </div>
+              
+              <div class="mt-4 text-center">
+                <button class="text-primary text-sm font-medium hover:text-opacity-80" id="blockchainExplorerBtn">
+                  <i class="fa fa-external-link mr-1"></i>区块链浏览器
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 报表模块 -->
+      <div class="bg-white rounded-xl card-shadow mt-6 overflow-hidden">
+        <div class="border-b border-light-2 px-6 py-4 flex justify-between items-center">
+          <h2 class="font-semibold text-lg">
+            <i class="fa fa-file-text-o text-primary mr-2"></i>合规报表
+          </h2>
+          <div class="flex space-x-3">
+            <button class="text-sm text-primary hover:text-opacity-80" id="emailReportBtn">
+              <i class="fa fa-envelope-o mr-1"></i>邮件推送
+            </button>
+            <button class="text-sm text-primary hover:text-opacity-80" id="exportPdfBtn">
+              <i class="fa fa-download mr-1"></i>导出PDF
+            </button>
+          </div>
+        </div>
+        <div class="p-6">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div class="border border-light-2 rounded-lg p-4">
+              <div class="text-sm font-medium text-dark-2 mb-2">本周操作统计</div>
+              <div class="space-y-2" id="operationStats">
+                <div class="text-center text-dark-2 text-sm py-4">
+                  <i class="fa fa-spinner fa-spin mr-2"></i>正在加载统计数据...
+                </div>
+              </div>
+            </div>
+            
+            <div class="border border-light-2 rounded-lg p-4">
+              <div class="text-sm font-medium text-dark-2 mb-2">安全事件</div>
+              <div class="space-y-2" id="securityStats">
+                <div class="text-center text-dark-2 text-sm py-4">
+                  <i class="fa fa-spinner fa-spin mr-2"></i>正在加载统计数据...
+                </div>
+              </div>
+            </div>
+            
+            <div class="border border-light-2 rounded-lg p-4">
+              <div class="text-sm font-medium text-dark-2 mb-2">合规检查</div>
+              <div class="space-y-2" id="complianceStats">
+                <div class="text-center text-dark-2 text-sm py-4">
+                  <i class="fa fa-spinner fa-spin mr-2"></i>正在加载统计数据...
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="border border-light-2 rounded-lg p-4">
+            <div class="text-sm font-medium text-dark-2 mb-2">月度趋势</div>
+            <div class="h-64" id="trendChart"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- 页脚 -->
+  <footer class="bg-white border-t border-light-2 py-6">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex flex-col md:flex-row justify-between items-center">
+        <div class="text-dark-2 text-sm mb-4 md:mb-0">
+          © 2025 SecureDataFlow. 保留所有权利.
+        </div>
+        <div class="flex space-x-6">
+          <a href="#" class="text-dark-2 hover:text-primary text-sm">隐私政策</a>
+          <a href="#" class="text-dark-2 hover:text-primary text-sm">服务条款</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- JavaScript -->
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+  <script>
+    // 应用程序状态
+    const appState = {
+      logs: [],  // 将从API获取日志数据
+      alerts: [],  // 将从API获取告警数据
+      blockchainRecords: [],  // 将从API获取区块链数据
+      stats: {}  // 将从API获取统计数据
+    };
+
+    // API端点配置
+    const API_ENDPOINTS = {
+      LOGS: '/api/v1/audit/logs',  // 获取操作日志的API
+      ALERTS: '/api/v1/audit/alerts',  // 获取安全告警的API
+      BLOCKCHAIN: '/api/v1/audit/blockchain',  // 获取区块链存证的API
+      STATS: '/api/v1/audit/stats',  // 获取统计数据的API
+      EXPORT_CSV: '/api/v1/audit/export/csv',  // 导出CSV的API
+      EXPORT_PDF: '/api/v1/audit/export/pdf',  // 导出PDF的API
+      SEND_REPORT: '/api/v1/audit/report/send'  // 发送报告的API
+    };
+
+    // 初始化函数
+    async function initializeDashboard() {
+      // 日期范围选择器
+      flatpickr("#dateRange", {
+        mode: "range",
+        dateFormat: "Y-m-d",
+        defaultDate: [new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10), 
+                     new Date().toISOString().slice(0, 10)]
+      });
+
+      // 初始化趋势图表
+      initTrendChart();
+
+      // 加载初始数据
+      await loadInitialData();
+
+      // 绑定事件
+      bindEvents();
+    }
+
+    // 初始化趋势图表
+    function initTrendChart() {
+      const trendChart = echarts.init(document.getElementById('trendChart'));
+      
+      // 先显示加载状态
+      trendChart.showLoading({
+        text: '正在加载图表数据...',
+        color: '#165DFF',
+        textColor: '#1D2129',
+        maskColor: 'rgba(255, 255, 255, 0.8)'
+      });
+
+      // 窗口大小变化时重绘图表
+      window.addEventListener('resize', function() {
+        trendChart.resize();
+      });
+    }
+
+    // 加载初始数据
+    async function loadInitialData() {
+      try {
+        // 这里应该是调用API获取数据，实际实现需要替换为真实的API调用
+        // 示例:
+        // const [logsRes, alertsRes, blockchainRes, statsRes] = await Promise.all([
+        //   fetch(API_ENDPOINTS.LOGS),
+        //   fetch(API_ENDPOINTS.ALERTS),
+        //   fetch(API_ENDPOINTS.BLOCKCHAIN),
+        //   fetch(API_ENDPOINTS.STATS)
+        // ]);
+        // 
+        // appState.logs = await logsRes.json();
+        // appState.alerts = await alertsRes.json();
+        // appState.blockchainRecords = await blockchainRes.json();
+        // appState.stats = await statsRes.json();
+        
+        // 模拟API调用延迟
+        await new Promise(resolve => setTimeout(resolve, 800));
+        
+        // 渲染数据
+        renderAll();
+      } catch (error) {
+        console.error('加载数据失败:', error);
+        showError('加载数据失败，请稍后重试');
+      }
+    }
+
+    // 渲染所有数据
+    function renderAll() {
+      renderLogs();
+      renderAlerts();
+      renderBlockchainRecords();
+      renderStats();
+      updateTrendChart();
+    }
+
+    // 渲染日志列表
+    function renderLogs() {
+      const logContainer = document.getElementById('logContainer');
+      
+      if (appState.logs.length === 0) {
+        logContainer.innerHTML = `
+          <div class="px-6 py-4 text-center text-dark-2">
+            <i class="fa fa-info-circle mr-2"></i>没有找到符合条件的日志记录
+          </div>
+        `;
+        return;
+      }
+      
+      logContainer.innerHTML = '';
+      
+      appState.logs.forEach(log => {
+        const logTypeClass = getLogTypeClass(log.type);
+        const logTypeName = getLogTypeName(log.type);
+        
+        const logItem = document.createElement('div');
+        logItem.className = 'px-6 py-4 hover:bg-light-1 transition';
+        logItem.innerHTML = `
+          <div class="flex items-start">
+            <div class="px-2 py-1 rounded text-xs font-medium ${logTypeClass} mr-3">${logTypeName}</div>
+            <div class="flex-1">
+              <div class="flex justify-between">
+                <span class="font-medium">${log.user}</span>
+                <span class="text-dark-2 text-sm">${log.time}</span>
+              </div>
+              <p class="text-dark-2 text-sm mt-1">${log.action}</p>
+              <div class="mt-2 flex items-center text-xs text-dark-2">
+                ${renderLogDetails(log.details)}
+              </div>
+            </div>
+          </div>
+        `;
+        logContainer.appendChild(logItem);
+      });
+      
+      // 添加"加载更多"按钮
+      const loadMore = document.createElement('div');
+      loadMore.className = 'px-6 py-4 text-center';
+      loadMore.innerHTML = `
+        <button class="text-primary text-sm font-medium hover:text-opacity-80" id="loadMoreLogsBtn">
+          <i class="fa fa-arrow-down mr-1"></i>加载更多
+        </button>
+      `;
+      logContainer.appendChild(loadMore);
+    }
+
+    // 渲染日志详情
+    function renderLogDetails(details) {
+      if (!details) return '';
+      
+      let html = '';
+      for (const [key, value] of Object.entries(details)) {
+        const label = key === 'ip' ? 'IP' : 
+                     key === 'device' ? '设备' : 
+                     key === 'node' ? 'TEE节点' : 
+                     key === 'protocol' ? '加密协议' : 
+                     key === 'operator' ? '操作人' : 
+                     key === 'scope' ? '生效范围' : 
+                     key === 'location' ? '存储位置' : 
+                     key === 'status' ? '状态' : key;
+        
+        const statusHtml = value === 'verified' ? 
+          '<span class="flex items-center"><span class="w-2 h-2 rounded-full bg-success mr-1"></span>区块链存证已验证</span>' : 
+          `<span>${value}</span>`;
+        
+        html += `<span class="mr-3">${label}: ${key === 'status' ? statusHtml : value}</span>`;
+      }
+      return html;
+    }
+
+    // 渲染告警列表
+    function renderAlerts() {
+      const alertsContainer = document.getElementById('alertsContainer');
+      
+      if (appState.alerts.length === 0) {
+        alertsContainer.innerHTML = `
+          <div class="px-6 py-4 text-center text-dark-2">
+            <i class="fa fa-check-circle mr-2"></i>当前没有未处理的安全告警
+          </div>
+        `;
+        return;
+      }
+      
+      alertsContainer.innerHTML = '';
+      
+      appState.alerts.forEach(alert => {
+        const alertClass = getAlertClass(alert.level);
+        const alertLevel = getAlertLevel(alert.level);
+        const alertColor = getAlertColor(alert.level);
+        
+        const alertItem = document.createElement('div');
+        alertItem.className = `px-6 py-4 ${alertClass} hover:bg-light-1 transition`;
+        alertItem.innerHTML = `
+          <div class="flex justify-between items-start">
+            <div>
+              <div class="font-medium">${alert.title}</div>
+              <p class="text-dark-2 text-sm mt-1">${alert.description}</p>
+            </div>
+            <span class="text-xs px-2 py-1 ${alertColor} text-white rounded">${alertLevel}</span>
+          </div>
+          <div class="mt-2 text-xs text-dark-2">
+            <span class="mr-3">${alert.time}</span>
+            <span>${alert.status}</span>
+          </div>
+        `;
+        alertsContainer.appendChild(alertItem);
+      });
+      
+      // 添加"查看全部"按钮
+      const viewAll = document.createElement('div');
+      viewAll.className = 'px-6 py-4 text-center';
+      viewAll.innerHTML = `
+        <button class="text-primary text-sm font-medium hover:text-opacity-80" id="viewAllAlertsBtn">
+          <i class="fa fa-list mr-1"></i>查看全部告警
+        </button>
+      `;
+      alertsContainer.appendChild(viewAll);
+    }
+
+    // 渲染区块链记录
+    function renderBlockchainRecords() {
+      const blockchainContainer = document.getElementById('blockchainContainer');
+      
+      if (appState.blockchainRecords.length === 0) {
+        blockchainContainer.innerHTML = `
+          <div class="text-center text-dark-2 text-sm py-4">
+            <i class="fa fa-info-circle mr-2"></i>今日暂无区块链存证记录
+          </div>
+        `;
+        document.getElementById('blockchainCount').textContent = '0';
+        return;
+      }
+      
+      blockchainContainer.innerHTML = '';
+      
+      appState.blockchainRecords.forEach(record => {
+        const recordClass = record.status === 'verified' ? 'chain-verified' : 'chain-pending';
+        const recordStatus = record.status === 'verified' ? '已验证' : '确认中';
+        const recordColor = record.status === 'verified' ? 'bg-success' : 'bg-warning';
+        
+        const recordItem = document.createElement('div');
+        recordItem.className = `p-3 rounded-lg ${recordClass}`;
+        recordItem.innerHTML = `
+          <div class="flex justify-between items-center">
+            <span class="text-sm font-medium">${record.name}</span>
+            <span class="text-xs px-2 py-1 ${recordColor} text-white rounded">${recordStatus}</span>
+          </div>
+          <div class="mt-1 text-xs text-dark-2 truncate">TxHash: ${record.txHash}</div>
+        `;
+        blockchainContainer.appendChild(recordItem);
+      });
+      
+      document.getElementById('blockchainCount').textContent = appState.blockchainRecords.length;
+    }
+
+    // 渲染统计数据
+    function renderStats() {
+      const operationStats = document.getElementById('operationStats');
+      const securityStats = document.getElementById('securityStats');
+      const complianceStats = document.getElementById('complianceStats');
+      
+      if (!appState.stats || Object.keys(appState.stats).length === 0) {
+        operationStats.innerHTML = '<div class="text-center text-dark-2 text-sm py-4">暂无统计数据</div>';
+        securityStats.innerHTML = '<div class="text-center text-dark-2 text-sm py-4">暂无统计数据</div>';
+        complianceStats.innerHTML = '<div class="text-center text-dark-2 text-sm py-4">暂无统计数据</div>';
+        return;
+      }
+      
+      // 操作统计
+      operationStats.innerHTML = `
+        <div class="flex justify-between text-sm">
+          <span>数据调取</span>
+          <span class="font-medium">${appState.stats.dataAccess || 0} 次</span>
+        </div>
+        <div class="flex justify-between text-sm">
+          <span>计算任务</span>
+          <span class="font-medium">${appState.stats.computeTasks || 0} 次</span>
+        </div>
+        <div class="flex justify-between text-sm">
+          <span>权限变更</span>
+          <span class="font-medium">${appState.stats.permissionChanges || 0} 次</span>
+        </div>
+      `;
+      
+      // 安全事件
+      securityStats.innerHTML = `
+        <div class="flex justify-between text-sm">
+          <span>高危事件</span>
+          <span class="font-medium text-danger">${appState.stats.criticalAlerts || 0} 起</span>
+        </div>
+        <div class="flex justify-between text-sm">
+          <span>中危事件</span>
+          <span class="font-medium text-warning">${appState.stats.highAlerts || 0} 起</span>
+        </div>
+        <div class="flex justify-between text-sm">
+          <span>已处理</span>
+          <span class="font-medium text-success">${appState.stats.resolvedAlerts || 0} 起</span>
+        </div>
+      `;
+      
+      // 合规检查
+      complianceStats.innerHTML = `
+        <div class="flex justify-between text-sm">
+          <span>数据保护</span>
+          <span class="font-medium ${appState.stats.dataProtection === '符合' ? 'text-success' : 'text-danger'}">
+            ${appState.stats.dataProtection || '--'}
+          </span>
+        </div>
+        <div class="flex justify-between text-sm">
+          <span>访问控制</span>
+          <span class="font-medium ${appState.stats.accessControl === '符合' ? 'text-success' : 'text-danger'}">
+            ${appState.stats.accessControl || '--'}
+          </span>
+        </div>
+        <div class="flex justify-between text-sm">
+          <span>审计日志</span>
+          <span class="font-medium ${appState.stats.auditLogs === '符合' ? 'text-success' : 'text-warning'}">
+            ${appState.stats.auditLogs || '--'}
+          </span>
+        </div>
+      `;
+    }
+
+    // 更新趋势图表
+    function updateTrendChart() {
+      const trendChart = echarts.getInstanceByDom(document.getElementById('trendChart'));
+      
+      if (!trendChart) {
+        console.error('趋势图表未初始化');
+        return;
+      }
+      
+      // 这里应该使用从API获取的实际数据
+      // 示例数据
+      const option = {
+        tooltip: {
+          trigger: 'axis'
+        },
+        legend: {
+          data: ['数据调取', '计算任务', '安全事件']
+        },
+        grid: {
+          left: '3%',
+          right: '4%',
+          bottom: '3%',
+          containLabel: true
+        },
+        xAxis: {
+          type: 'category',
+          boundaryGap: false,
+          data: ['7/1', '7/5', '7/10', '7/15', '7/20', '7/25']
+        },
+        yAxis: {
+          type: 'value'
+        },
+        series: [
+          {
+            name: '数据调取',
+            type: 'line',
+            smooth: true,
+            data: [120, 132, 145, 160, 172, 190],
+            lineStyle: {
+              color: '#165DFF',
+              width: 3
+            },
+            itemStyle: {
+              color: '#165DFF'
+            }
+          },
+          {
+            name: '计算任务',
+            type: 'line',
+            smooth: true,
+            data: [20, 22, 25, 28, 32, 38],
+            lineStyle: {
+              color: '#52C41A',
+              width: 3
+            },
+            itemStyle: {
+              color: '#52C41A'
+            }
+          },
+          {
+            name: '安全事件',
+            type: 'line',
+            smooth: true,
+            data: [5, 8, 6, 4, 7, 3],
+            lineStyle: {
+              color: '#F53F3F',
+              width: 3
+            },
+            itemStyle: {
+              color: '#F53F3F'
+            }
+          }
+        ]
+      };
+      
+      trendChart.hideLoading();
+      trendChart.setOption(option);
+    }
+
+    // 绑定事件
+    function bindEvents() {
+      // 刷新按钮功能
+      const refreshBtn = document.getElementById('refreshBtn');
+      if (refreshBtn) {
+        refreshBtn.addEventListener('click', async function() {
+          const icon = refreshBtn.querySelector('i');
+          icon.classList.add('fa-spin');
+          
+          try {
+            await loadInitialData();
+            document.getElementById('lastUpdate').textContent = '最后更新: ' + new Date().toLocaleTimeString();
+          } catch (error) {
+            console.error('刷新数据失败:', error);
+            showError('刷新数据失败');
+          } finally {
+            icon.classList.remove('fa-spin');
+          }
+        });
+      }
+
+      // 筛选按钮
+      document.getElementById('filterBtn').addEventListener('click', async function() {
+        const dateRange = document.getElementById('dateRange').value;
+        const logType = document.getElementById('logType').value;
+        const logUser = document.getElementById('logUser').value;
+        
+        // 显示加载状态
+        const logContainer = document.getElementById('logContainer');
+        logContainer.innerHTML = `
+          <div class="px-6 py-4 text-center text-dark-2">
+            <i class="fa fa-spinner fa-spin mr-2"></i>正在筛选数据...
+          </div>
+        `;
+        
+        try {
+          // 这里应该是调用API筛选数据
+          // 示例:
+          // const params = new URLSearchParams();
+          // if (dateRange) params.append('dateRange', dateRange);
+          // if (logType) params.append('type', logType);
+          // if (logUser) params.append('user', logUser);
+          // 
+          // const response = await fetch(`${API_ENDPOINTS.LOGS}?${params.toString()}`);
+          // appState.logs = await response.json();
+          
+          // 模拟API调用延迟
+          await new Promise(resolve => setTimeout(resolve, 800));
+          
+          // 重新渲染日志
+          renderLogs();
+        } catch (error) {
+          console.error('筛选数据失败:', error);
+          showError('筛选数据失败');
+        }
+      });
+
+      // 导出CSV
+      document.getElementById('exportCsvBtn').addEventListener('click', exportLogsToCsv);
+
+      // 导出PDF
+      document.getElementById('exportPdfBtn').addEventListener('click', exportReportToPdf);
+
+      // 邮件推送
+      document.getElementById('emailReportBtn').addEventListener('click', async function() {
+        try {
+          // 这里应该是调用API发送邮件
+          // 示例:
+          // await fetch(API_ENDPOINTS.SEND_REPORT, {
+          //   method: 'POST',
+          //   headers: { 'Content-Type': 'application/json' },
+          //   body: JSON.stringify({
+          //     email: 'audit-admin@securedataflow.com',
+          //     dateRange: document.getElementById('dateRange').value
+          //   })
+          // });
+          
+          alert('合规报表已发送到您的邮箱');
+        } catch (error) {
+          console.error('发送邮件失败:', error);
+          alert('发送邮件失败，请稍后重试');
+        }
+      });
+
+      // 区块链浏览器
+      document.getElementById('blockchainExplorerBtn').addEventListener('click', function() {
+        window.open('https://etherscan.io', '_blank');
+      });
+
+      // 加载更多日志
+      document.getElementById('logContainer').addEventListener('click', async function(e) {
+        if (e.target.closest('#loadMoreLogsBtn')) {
+          const button = e.target.closest('button');
+          const originalText = button.innerHTML;
+          button.innerHTML = '<i class="fa fa-spinner fa-spin mr-1"></i>加载中...';
+          button.disabled = true;
+          
+          try {
+            // 这里应该是调用API加载更多数据
+            // 示例:
+            // const response = await fetch(`${API_ENDPOINTS.LOGS}?offset=${appState.logs.length}&limit=10`);
+            // const newLogs = await response.json();
+            // appState.logs = [...appState.logs, ...newLogs];
+            
+            // 模拟API调用延迟
+            await new Promise(resolve => setTimeout(resolve, 800));
+            
+            // 重新渲染日志
+            renderLogs();
+          } catch (error) {
+            console.error('加载更多日志失败:', error);
+            showError('加载更多日志失败');
+          } finally {
+            button.innerHTML = originalText;
+            button.disabled = false;
+          }
+        }
+      });
+
+      // 查看全部告警
+      document.getElementById('alertsContainer').addEventListener('click', async function(e) {
+        if (e.target.closest('#viewAllAlertsBtn')) {
+          const button = e.target.closest('button');
+          const originalText = button.innerHTML;
+          button.innerHTML = '<i class="fa fa-spinner fa-spin mr-1"></i>加载中...';
+          button.disabled = true;
+          
+          try {
+            // 这里应该是调用API获取所有告警
+            // 示例:
+            // const response = await fetch(API_ENDPOINTS.ALERTS);
+            // appState.alerts = await response.json();
+            
+            // 模拟API调用延迟
+            await new Promise(resolve => setTimeout(resolve, 800));
+            
+            // 重新渲染告警
+            renderAlerts();
+          } catch (error) {
+            console.error('加载告警失败:', error);
+            showError('加载告警失败');
+          } finally {
+            button.innerHTML = originalText;
+            button.disabled = false;
+          }
+        }
+      });
+    }
+
+    // 导出日志为CSV
+    async function exportLogsToCsv() {
+      try {
+        // 这里应该是调用API导出CSV
+        // 示例:
+        // const response = await fetch(API_ENDPOINTS.EXPORT_CSV, {
+        //   method: 'POST',
+        //   headers: { 'Content-Type': 'application/json' },
+        //   body: JSON.stringify({
+        //     dateRange: document.getElementById('dateRange').value,
+        //     type: document.getElementById('logType').value,
+        //     user: document.getElementById('logUser').value
+        //   })
+        // });
+        // 
+        // const blob = await response.blob();
+        // const url = URL.createObjectURL(blob);
+        // const link = document.createElement('a');
+        // link.setAttribute('href', url);
+        // link.setAttribute('download', `操作日志_${new Date().toISOString().slice(0, 10)}.csv`);
+        // link.style.visibility = 'hidden';
+        // document.body.appendChild(link);
+        // link.click();
+        // document.body.removeChild(link);
+        
+        // 模拟导出延迟
+        await new Promise(resolve => setTimeout(resolve, 800));
+        alert('CSV导出功能需要连接后端API实现');
+      } catch (error) {
+        console.error('导出CSV失败:', error);
+        alert('导出CSV失败，请稍后重试');
+      }
+    }
+
+    // 导出报表为PDF
+    async function exportReportToPdf() {
+      try {
+        // 使用jsPDF库
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        // 添加标题
+        doc.setFontSize(18);
+        doc.text('SecureDataFlow 合规报表', 105, 15, { align: 'center' });
+        
+        // 添加日期
+        doc.setFontSize(10);
+        doc.text(`生成时间: ${new Date().toLocaleString()}`, 105, 22, { align: 'center' });
+        
+        // 添加统计信息表格
+        doc.autoTable({
+          startY: 30,
+          head: [['统计项', '数值']],
+          body: [
+            ['数据调取', `${appState.stats.dataAccess || 0} 次`],
+            ['计算任务', `${appState.stats.computeTasks || 0} 次`],
+            ['权限变更', `${appState.stats.permissionChanges || 0} 次`],
+            ['高危事件', `${appState.stats.criticalAlerts || 0} 起`],
+            ['中危事件', `${appState.stats.highAlerts || 0} 起`],
+            ['已处理事件', `${appState.stats.resolvedAlerts || 0} 起`]
+          ],
+          theme: 'grid',
+          headStyles: {
+            fillColor: [22, 93, 255],
+            textColor: 255
+          }
+        });
+        
+        // 添加图表占位符
+        doc.setFontSize(12);
+        doc.text('月度趋势图', 105, doc.autoTable.previous.finalY + 15, { align: 'center' });
+        doc.text('(实际报告中会包含图表)', 105, doc.autoTable.previous.finalY + 22, { align: 'center' });
+        
+        // 添加日志摘要
+        doc.setFontSize(12);
+        doc.text('最近操作日志', 15, doc.autoTable.previous.finalY + 30);
+        
+        const logRows = appState.logs.slice(0, 5).map(log => {
+          const logTypeName = getLogTypeName(log.type);
+          return [
+            log.time,
+            log.user,
+            logTypeName,
+            log.action.length > 30 ? log.action.substring(0, 30) + '...' : log.action
+          ];
+        });
+        
+        doc.autoTable({
+          startY: doc.autoTable.previous.finalY + 35,
+          head: [['时间', '用户', '类型', '操作']],
+          body: logRows,
+          theme: 'grid',
+          headStyles: {
+            fillColor: [22, 93, 255],
+            textColor: 255
+          },
+          columnStyles: {
+            0: { cellWidth: 40 },
+            1: { cellWidth: 30 },
+            2: { cellWidth: 25 },
+            3: { cellWidth: 'auto' }
+          }
+        });
+        
+        // 保存PDF
+        doc.save(`合规报表_${new Date().toISOString().slice(0, 10)}.pdf`);
+      } catch (error) {
+        console.error('导出PDF失败:', error);
+        alert('导出PDF失败，请稍后重试');
+      }
+    }
+
+    // 显示错误信息
+    function showError(message) {
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'fixed top-20 right-4 bg-danger text-white px-4 py-2 rounded-md shadow-md z-50';
+      errorDiv.innerHTML = `
+        <i class="fa fa-exclamation-circle mr-2"></i>${message}
+      `;
+      document.body.appendChild(errorDiv);
+      
+      setTimeout(() => {
+        errorDiv.remove();
+      }, 3000);
+    }
+
+    // 辅助函数：获取日志类型类名
+    function getLogTypeClass(type) {
+      switch(type) {
+        case 'data': return 'log-type-data';
+        case 'compute': return 'log-type-compute';
+        case 'permission': return 'log-type-permission';
+        case 'system': return 'log-type-system';
+        default: return '';
+      }
+    }
+
+    // 辅助函数：获取日志类型名称
+    function getLogTypeName(type) {
+      switch(type) {
+        case 'data': return '数据调取';
+        case 'compute': return '计算任务';
+        case 'permission': return '权限变更';
+        case 'system': return '系统操作';
+        default: return type;
+      }
+    }
+
+    // 辅助函数：获取告警类名
+    function getAlertClass(level) {
+      switch(level) {
+        case 'critical': return 'alert-critical';
+        case 'high': return 'alert-high';
+        case 'medium': return 'alert-medium';
+        default: return '';
+      }
+    }
+
+    // 辅助函数：获取告警级别名称
+    function getAlertLevel(level) {
+      switch(level) {
+        case 'critical': return '危急';
+        case 'high': return '高危';
+        case 'medium': return '中危';
+        default: return level;
+      }
+    }
+
+    // 辅助函数：获取告警颜色类
+    function getAlertColor(level) {
+      switch(level) {
+        case 'critical': return 'bg-danger';
+        case 'high': return 'bg-warning';
+        case 'medium': return 'bg-primary';
+        default: return '';
+      }
+    }
+
+    // DOM加载完成后初始化
+    document.addEventListener('DOMContentLoaded', initializeDashboard);
+  </script>
+
+</body>
+
+</html>

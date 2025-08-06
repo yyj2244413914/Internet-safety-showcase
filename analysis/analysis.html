@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SecureDataFlow 数据分析</title>
+  <!-- 引入外部资源 -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <!-- 引入 ECharts -->
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+  <!-- 引入导出工具 -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+  <!-- Tailwind 配置 -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#165DFF',
+            success: '#52C41A',
+            warning: '#FAAD14',
+            danger: '#F53F3F',
+            dark: '#1D2129',
+            'dark-2': '#4E5969',
+            'light-1': '#F2F3F5',
+            'light-2': '#E5E6EB'
+          },
+          fontFamily: {
+            inter: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      }
+    }
+  </script>
+
+  <!-- 自定义工具类 -->
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .chart-container {
+        height: 400px;
+      }
+      .metric-card {
+        transition: all 0.3s ease;
+      }
+      .metric-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+      }
+      .dimension-tab.active {
+        border-bottom: 2px solid #165DFF;
+        color: #165DFF;
+      }
+    }
+  </style>
+</head>
+
+<body class="font-inter bg-gray-50 text-dark min-h-screen flex flex-col">
+  <!-- 顶部导航栏 -->
+  <header class="bg-white shadow-sm fixed w-full z-50 transition-all duration-300" id="header">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between items-center h-16">
+        <!-- 左侧Logo和标题 -->
+        <div class="flex items-center">
+          <div class="flex-shrink-0 flex items-center">
+            <div class="w-8 h-8 rounded-md gradient-bg flex items-center justify-center">
+              <i class="fa fa-shield text-white"></i>
+            </div>
+            <span class="ml-2 text-lg font-semibold text-dark">SecureDataFlow 数据分析</span>
+          </div>
+        </div>
+
+        <!-- 右侧工具栏 -->
+        <div class="flex items-center space-x-4">
+          <!-- 最后更新时间 -->
+          <span class="text-sm text-dark-2 hidden sm:block" id="lastUpdate">最后更新: --</span>
+          
+          <!-- 刷新按钮 -->
+          <button class="p-2 rounded-full hover:bg-light-1 transition-colors" id="refreshBtn">
+            <i class="fa fa-refresh text-dark-2"></i>
+          </button>
+
+          <!-- 用户信息 -->
+          <div class="flex items-center">
+            <img class="h-8 w-8 rounded-full object-cover" src="https://randomuser.me/api/portraits/men/32.jpg" alt="用户头像">
+            <span class="ml-2 text-sm font-medium hidden md:block">数据分析师</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主内容区 -->
+  <main class="flex-1 pt-20 pb-10">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+      <!-- 页面标题 -->
+      <div class="mb-8">
+        <h1 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold text-dark">协同计算结果分析</h1>
+        <p class="text-dark-2 mt-1">安全展示多方计算的最终输出结果，支持多维度探索</p>
+      </div>
+
+      <!-- 过滤控制区 -->
+      <div class="bg-white rounded-xl p-6 card-shadow mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-dark-2 mb-1">分析维度</label>
+            <div class="flex border-b border-light-2">
+              <button class="dimension-tab px-4 py-2 text-sm font-medium active" data-dimension="department">按部门</button>
+              <button class="dimension-tab px-4 py-2 text-sm font-medium" data-dimension="time">按时间</button>
+              <button class="dimension-tab px-4 py-2 text-sm font-medium" data-dimension="region">按地区</button>
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-dark-2 mb-1">时间范围</label>
+            <select class="w-full px-3 py-2 border border-light-2 rounded-md text-sm">
+              <option>最近7天</option>
+              <option>最近30天</option>
+              <option>自定义范围</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-dark-2 mb-1">数据类型</label>
+            <select class="w-full px-3 py-2 border border-light-2 rounded-md text-sm">
+              <option>全部数据</option>
+              <option>敏感数据</option>
+              <option>脱敏数据</option>
+            </select>
+          </div>
+          <div class="flex items-end space-x-3">
+            <button class="flex-1 bg-primary text-white py-2 px-4 rounded-md hover:bg-opacity-90 transition" id="applyFilter">
+              <i class="fa fa-filter mr-2"></i>应用筛选
+            </button>
+            <button class="p-2 border border-light-2 rounded-md hover:bg-light-1" id="resetFilter">
+              <i class="fa fa-undo"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 模型评估指标 -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div class="metric-card bg-white rounded-xl p-6 card-shadow text-center">
+          <div class="text-3xl font-bold text-primary mb-2" id="f1-score">--</div>
+          <div class="text-sm text-dark-2">F1 Score</div>
+        </div>
+        <div class="metric-card bg-white rounded-xl p-6 card-shadow text-center">
+          <div class="text-3xl font-bold text-success mb-2" id="accuracy">--</div>
+          <div class="text-sm text-dark-2">准确率</div>
+        </div>
+        <div class="metric-card bg-white rounded-xl p-6 card-shadow text-center">
+          <div class="text-3xl font-bold text-warning mb-2" id="precision">--</div>
+          <div class="text-sm text-dark-2">精确率</div>
+        </div>
+        <div class="metric-card bg-white rounded-xl p-6 card-shadow text-center">
+          <div class="text-3xl font-bold text-danger mb-2" id="recall">--</div>
+          <div class="text-sm text-dark-2">召回率</div>
+        </div>
+      </div>
+
+      <!-- 图表展示区 -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <!-- 主图表 -->
+        <div class="bg-white rounded-xl p-6 card-shadow">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="font-semibold text-lg" id="main-chart-title">部门数据分布</h2>
+            <div class="flex space-x-2">
+              <button class="chart-type-btn px-3 py-1 border border-light-2 rounded text-sm active" data-type="bar">
+                <i class="fa fa-bar-chart mr-1"></i>柱状图
+              </button>
+              <button class="chart-type-btn px-3 py-1 border border-light-2 rounded text-sm" data-type="line">
+                <i class="fa fa-line-chart mr-1"></i>折线图
+              </button>
+            </div>
+          </div>
+          <div class="chart-container" id="main-chart"></div>
+        </div>
+        
+        <!-- 饼图 -->
+        <div class="bg-white rounded-xl p-6 card-shadow">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="font-semibold text-lg">数据分类占比</h2>
+            <button class="text-sm text-primary hover:text-opacity-80" id="export-png">
+              <i class="fa fa-download mr-1"></i>导出图片
+            </button>
+          </div>
+          <div class="chart-container" id="pie-chart"></div>
+        </div>
+      </div>
+
+      <!-- ROC曲线 -->
+      <div class="bg-white rounded-xl p-6 card-shadow mb-6">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="font-semibold text-lg">模型性能评估 (ROC曲线)</h2>
+          <div class="flex items-center text-sm text-success">
+            <i class="fa fa-check-circle mr-1"></i>
+            <span id="auc-value">AUC = --</span>
+          </div>
+        </div>
+        <div class="chart-container" id="roc-chart"></div>
+      </div>
+
+      <!-- 数据表格 -->
+      <div class="bg-white rounded-xl card-shadow overflow-hidden mb-6">
+        <div class="border-b border-light-2 px-6 py-4 flex justify-between items-center">
+          <h2 class="font-semibold text-lg">
+            <i class="fa fa-table text-primary mr-2"></i>详细数据
+          </h2>
+          <div class="flex space-x-3">
+            <button class="text-sm text-primary hover:text-opacity-80" id="export-csv">
+              <i class="fa fa-file-text-o mr-1"></i>导出CSV
+            </button>
+            <button class="text-sm text-primary hover:text-opacity-80" id="export-excel">
+              <i class="fa fa-file-excel-o mr-1"></i>导出Excel
+            </button>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-light-2">
+            <thead>
+              <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-dark-2 uppercase tracking-wider">部门</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-dark-2 uppercase tracking-wider">用户数</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-dark-2 uppercase tracking-wider">平均收入</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-dark-2 uppercase tracking-wider">转化率</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-dark-2 uppercase tracking-wider">预测值</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-light-2" id="data-table-body">
+              <!-- 数据将通过API动态加载 -->
+              <tr>
+                <td colspan="5" class="text-center py-8 text-dark-2">正在加载数据...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- 分页 -->
+        <div class="px-6 py-4 flex items-center justify-between border-t border-light-2">
+          <div class="text-sm text-dark-2">
+            显示 <span class="font-medium" id="page-start">0</span> 到 <span class="font-medium" id="page-end">0</span> 条，共 <span class="font-medium" id="total-items">0</span> 条
+          </div>
+          <div class="flex space-x-2">
+            <button class="px-3 py-1 border border-light-2 rounded text-sm text-dark-2 hover:bg-light-1" id="prev-page">
+              上一页
+            </button>
+            <button class="px-3 py-1 bg-primary text-white rounded text-sm hover:bg-opacity-90" id="current-page">
+              1
+            </button>
+            <button class="px-3 py-1 border border-light-2 rounded text-sm text-dark-2 hover:bg-light-1" id="next-page">
+              下一页
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 报告生成 -->
+      <div class="bg-white rounded-xl card-shadow overflow-hidden">
+        <div class="border-b border-light-2 px-6 py-4 flex justify-between items-center">
+          <h2 class="font-semibold text-lg">
+            <i class="fa fa-file-text-o text-primary mr-2"></i>分析报告
+          </h2>
+          <div class="flex space-x-3">
+            <button class="text-sm text-primary hover:text-opacity-80" id="send-email">
+              <i class="fa fa-envelope-o mr-1"></i>邮件推送
+            </button>
+            <button class="text-sm text-primary hover:text-opacity-80" id="export-pdf">
+              <i class="fa fa-file-pdf-o mr-1"></i>导出PDF
+            </button>
+          </div>
+        </div>
+        <div class="p-6">
+          <div class="prose max-w-none" id="report-content">
+            <h3>安全计算分析报告</h3>
+            <p class="text-sm text-dark-2">生成时间: <span id="report-date">--</span></p>
+            
+            <h4>执行摘要</h4>
+            <p id="executive-summary">正在生成报告内容...</p>
+            
+            <h4>关键发现</h4>
+            <ul id="key-findings">
+              <li>正在加载关键发现...</li>
+            </ul>
+            
+            <h4>建议措施</h4>
+            <ol id="recommendations">
+              <li>正在生成建议...</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- 页脚 -->
+  <footer class="bg-white border-t border-light-2 py-6">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex flex-col md:flex-row justify-between items-center">
+        <div class="text-dark-2 text-sm mb-4 md:mb-0">
+          © 2025 SecureDataFlow. 保留所有权利.
+        </div>
+        <div class="flex space-x-6">
+          <a href="#" class="text-dark-2 hover:text-primary text-sm">隐私政策</a>
+          <a href="#" class="text-dark-2 hover:text-primary text-sm">API文档</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- JavaScript -->
+  <script>
+    // 初始化图表
+    function initCharts() {
+      // 主图表（柱状/折线）
+      const mainChart = echarts.init(document.getElementById('main-chart'));
+      // 饼图
+      const pieChart = echarts.init(document.getElementById('pie-chart'));
+      // ROC曲线
+      const rocChart = echarts.init(document.getElementById('roc-chart'));
+
+      // 更新主图表函数
+      function updateMainChart(type = 'bar', data = {categories: [], values: []}) {
+        const option = {
+          tooltip: {
+            trigger: 'axis',
+            axisPointer: {
+              type: 'shadow'
+            }
+          },
+          xAxis: {
+            type: 'category',
+            data: data.categories,
+            axisLine: {
+              lineStyle: {
+                color: '#E5E6EB'
+              }
+            },
+            axisLabel: {
+              color: '#4E5969'
+            }
+          },
+          yAxis: {
+            type: 'value',
+            axisLine: {
+              lineStyle: {
+                color: '#E5E6EB'
+              }
+            },
+            axisLabel: {
+              color: '#4E5969'
+            },
+            splitLine: {
+              lineStyle: {
+                color: '#F2F3F5'
+              }
+            }
+          },
+          series: [{
+            data: data.values,
+            type: type,
+            itemStyle: {
+              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                { offset: 0, color: '#165DFF' },
+                { offset: 1, color: '#0E42D2' }
+              ])
+            },
+            barWidth: '40%',
+            label: {
+              show: true,
+              position: 'top',
+              color: '#165DFF'
+            }
+          }],
+          grid: {
+            left: '3%',
+            right: '4%',
+            bottom: '3%',
+            containLabel: true
+          }
+        };
+        mainChart.setOption(option);
+      }
+
+      // 饼图配置
+      function updatePieChart(data = []) {
+        const option = {
+          tooltip: {
+            trigger: 'item'
+          },
+          legend: {
+            orient: 'vertical',
+            right: 10,
+            top: 'center',
+            textStyle: {
+              color: '#4E5969'
+            }
+          },
+          series: [
+            {
+              name: '部门占比',
+              type: 'pie',
+              radius: ['40%', '70%'],
+              avoidLabelOverlap: false,
+              itemStyle: {
+                borderRadius: 10,
+                borderColor: '#fff',
+                borderWidth: 2
+              },
+              label: {
+                show: false,
+                position: 'center'
+              },
+              emphasis: {
+                label: {
+                  show: true,
+                  fontSize: '18',
+                  fontWeight: 'bold'
+                }
+              },
+              labelLine: {
+                show: false
+              },
+              data: data,
+              color: ['#165DFF', '#52C41A', '#FAAD14', '#F53F3F']
+            }
+          ]
+        };
+        pieChart.setOption(option);
+      }
+
+      // ROC曲线配置
+      function updateRocChart(data = [], auc = 0) {
+        const option = {
+          tooltip: {
+            trigger: 'axis',
+            formatter: 'FPR: {c0}<br/>TPR: {c1}'
+          },
+          xAxis: {
+            type: 'value',
+            name: 'False Positive Rate',
+            min: 0,
+            max: 1,
+            axisLine: {
+              lineStyle: {
+                color: '#E5E6EB'
+              }
+            },
+            axisLabel: {
+              color: '#4E5969'
+            },
+            splitLine: {
+              lineStyle: {
+                color: '#F2F3F5'
+              }
+            }
+          },
+          yAxis: {
+            type: 'value',
+            name: 'True Positive Rate',
+            min: 0,
+            max: 1,
+            axisLine: {
+              lineStyle: {
+                color: '#E5E6EB'
+              }
+            },
+            axisLabel: {
+              color: '#4E5969'
+            },
+            splitLine: {
+              lineStyle: {
+                color: '#F2F3F5'
+              }
+            }
+          },
+          series: [
+            {
+              name: 'ROC Curve',
+              type: 'line',
+              smooth: true,
+              data: data,
+              symbol: 'circle',
+              symbolSize: 8,
+              itemStyle: {
+                color: '#52C41A'
+              },
+              lineStyle: {
+                width: 3,
+                color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
+                  { offset: 0, color: '#165DFF' },
+                  { offset: 1, color: '#52C41A' }
+                ])
+              },
+              areaStyle: {
+                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                  { offset: 0, color: 'rgba(82, 196, 26, 0.3)' },
+                  { offset: 1, color: 'rgba(82, 196, 26, 0.1)' }
+                ])
+              }
+            },
+            {
+              name: 'Random',
+              type: 'line',
+              data: [[0, 0], [1, 1]],
+              lineStyle: {
+                color: '#F53F3F',
+                type: 'dashed'
+              }
+            }
+          ],
+          grid: {
+            left: '3%',
+            right: '4%',
+            bottom: '3%',
+            containLabel: true
+          }
+        };
+        rocChart.setOption(option);
+        document.getElementById('auc-value').textContent = `AUC = ${auc.toFixed(2)}`;
+      }
+
+      // 初始化空图表
+      updateMainChart('bar', {categories: [], values: []});
+      updatePieChart([]);
+      updateRocChart([], 0);
+
+      // 窗口大小变化时重绘图表
+      window.addEventListener('resize', function() {
+        mainChart.resize();
+        pieChart.resize();
+        rocChart.resize();
+      });
+
+      // 图表类型切换
+      document.querySelectorAll('.chart-type-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          document.querySelectorAll('.chart-type-btn').forEach(b => b.classList.remove('active'));
+          this.classList.add('active');
+          // 实际项目中应从当前数据源获取数据
+          updateMainChart(this.dataset.type, {categories: [], values: []});
+        });
+      });
+
+      // 维度切换
+      document.querySelectorAll('.dimension-tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+          document.querySelectorAll('.dimension-tab').forEach(t => t.classList.remove('active'));
+          this.classList.add('active');
+          
+          // 更新图表标题
+          const titleMap = {
+            'department': '部门数据分布',
+            'time': '时间趋势分析',
+            'region': '地区数据分布'
+          };
+          document.getElementById('main-chart-title').textContent = titleMap[this.dataset.dimension];
+          
+          // 实际项目中这里应调用API获取新数据
+          // fetchDataByDimension(this.dataset.dimension);
+          console.log('切换维度:', this.dataset.dimension);
+        });
+      });
+
+      return {
+        updateMainChart,
+        updatePieChart,
+        updateRocChart
+      };
+    }
+
+    // 加载数据表格
+    function loadDataTable(data = [], page = 1, pageSize = 10) {
+      const tbody = document.getElementById('data-table-body');
+      tbody.innerHTML = '';
+      
+      if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-dark-2">暂无数据</td></tr>';
+        return;
+      }
+      
+      const start = (page - 1) * pageSize;
+      const end = Math.min(start + pageSize, data.length);
+      const pageData = data.slice(start, end);
+      
+      pageData.forEach(item => {
+        const row = document.createElement('tr');
+        row.className = 'hover:bg-light-1 transition';
+        row.innerHTML = `
+          <td class="px-6 py-4 whitespace-nowrap font-medium">${item.department || '--'}</td>
+          <td class="px-6 py-4 whitespace-nowrap">${item.users || '--'}</td>
+          <td class="px-6 py-4 whitespace-nowrap">${item.income ? '¥' + item.income.toLocaleString() : '--'}</td>
+          <td class="px-6 py-4 whitespace-nowrap">${item.conversion ? (item.conversion * 100).toFixed(1) + '%' : '--'}</td>
+          <td class="px-6 py-4 whitespace-nowrap ${getPredictionClass(item.prediction)}">${item.prediction ? item.prediction.toFixed(2) : '--'}</td>
+        `;
+        tbody.appendChild(row);
+      });
+      
+      // 更新分页信息
+      document.getElementById('page-start').textContent = start + 1;
+      document.getElementById('page-end').textContent = end;
+      document.getElementById('total-items').textContent = data.length;
+      document.getElementById('current-page').textContent = page;
+    }
+    
+    function getPredictionClass(value) {
+      if (!value) return '';
+      if (value >= 0.8) return 'text-success';
+      if (value >= 0.6) return 'text-warning';
+      return 'text-danger';
+    }
+
+    // 更新指标卡片
+    function updateMetrics(metrics = {}) {
+      document.getElementById('f1-score').textContent = metrics.f1Score ? metrics.f1Score.toFixed(2) : '--';
+      document.getElementById('accuracy').textContent = metrics.accuracy ? metrics.accuracy.toFixed(2) : '--';
+      document.getElementById('precision').textContent = metrics.precision ? metrics.precision.toFixed(2) : '--';
+      document.getElementById('recall').textContent = metrics.recall ? metrics.recall.toFixed(2) : '--';
+    }
+
+    // 更新分析报告
+    function updateReport(report = {}) {
+      const now = new Date();
+      document.getElementById('report-date').textContent = now.toISOString().split('T')[0];
+      
+      if (!report.executiveSummary) {
+        document.getElementById('executive-summary').textContent = '数据加载中...';
+        document.getElementById('key-findings').innerHTML = '<li>正在加载关键发现...</li>';
+        document.getElementById('recommendations').innerHTML = '<li>正在生成建议...</li>';
+        return;
+      }
+      
+      document.getElementById('executive-summary').textContent = report.executiveSummary;
+      
+      const keyFindingsList = document.getElementById('key-findings');
+      keyFindingsList.innerHTML = '';
+      report.keyFindings.forEach(item => {
+        const li = document.createElement('li');
+        li.textContent = item;
+        keyFindingsList.appendChild(li);
+      });
+      
+      const recommendationsList = document.getElementById('recommendations');
+      recommendationsList.innerHTML = '';
+      report.recommendations.forEach(item => {
+        const li = document.createElement('li');
+        li.textContent = item;
+        recommendationsList.appendChild(li);
+      });
+    }
+
+    // 导出功能
+    function setupExport() {
+      // 导出CSV
+      document.getElementById('export-csv').addEventListener('click', function() {
+        // 实际项目中应从当前数据源获取数据
+        // const data = getCurrentTableData();
+        alert('导出CSV功能: 需要实现数据获取逻辑');
+      });
+
+      // 导出Excel
+      document.getElementById('export-excel').addEventListener('click', function() {
+        // 实际项目中应从当前数据源获取数据
+        // const data = getCurrentTableData();
+        alert('导出Excel功能: 需要实现数据获取逻辑');
+      });
+
+      // 导出PDF
+      document.getElementById('export-pdf').addEventListener('click', function() {
+        const element = document.querySelector('.bg-white.rounded-xl.card-shadow');
+        const opt = {
+          margin: 10,
+          filename: 'analysis-report.pdf',
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2 },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        html2pdf().set(opt).from(element).save();
+      });
+
+      // 导出PNG
+      document.getElementById('export-png').addEventListener('click', function() {
+        const chart = echarts.getInstanceByDom(document.getElementById('pie-chart'));
+        const img = new Image();
+        img.src = chart.getDataURL({
+          type: 'png',
+          pixelRatio: 2,
+          backgroundColor: '#fff'
+        });
+        
+        img.onload = function() {
+          const link = document.createElement('a');
+          link.download = 'pie-chart.png';
+          link.href = img.src;
+          link.click();
+        };
+      });
+
+      // 邮件推送
+      document.getElementById('send-email').addEventListener('click', function() {
+        // 实际项目中应调用邮件API
+        // sendEmailReport();
+        alert('邮件推送功能: 需要实现邮件API调用');
+      });
+    }
+
+    // 初始化函数
+    function initializeDashboard() {
+      const charts = initCharts();
+      setupExport();
+      
+      // 刷新按钮功能
+      const refreshBtn = document.getElementById('refreshBtn');
+      if (refreshBtn) {
+        refreshBtn.addEventListener('click', function() {
+          const icon = refreshBtn.querySelector('i');
+          icon.classList.add('fa-spin');
+
+          // 模拟数据加载
+          setTimeout(() => {
+            icon.classList.remove('fa-spin');
+            document.getElementById('lastUpdate').textContent = '最后更新: ' + new Date().toLocaleTimeString();
+            
+            // 实际项目中应调用API重新获取数据
+            // fetchDashboardData();
+          }, 800);
+        });
+      }
+      
+      // 筛选按钮
+      document.getElementById('applyFilter').addEventListener('click', function() {
+        // 实际项目中应应用筛选条件并重新获取数据
+        // applyFilters();
+        alert('应用筛选功能: 需要实现筛选逻辑');
+      });
+      
+      // 重置按钮
+      document.getElementById('resetFilter').addEventListener('click', function() {
+        // 实际项目中应重置筛选条件并重新获取数据
+        // resetFilters();
+        alert('重置筛选功能: 需要实现重置逻辑');
+      });
+      
+      // 分页按钮
+      document.getElementById('prev-page').addEventListener('click', function() {
+        // 实际项目中应处理分页逻辑
+        // goToPrevPage();
+        alert('上一页功能: 需要实现分页逻辑');
+      });
+      
+      document.getElementById('next-page').addEventListener('click', function() {
+        // 实际项目中应处理分页逻辑
+        // goToNextPage();
+        alert('下一页功能: 需要实现分页逻辑');
+      });
+      
+      // 初始加载数据
+      // fetchDashboardData();
+    }
+
+    // DOM加载完成后初始化
+    document.addEventListener('DOMContentLoaded', initializeDashboard);
+  </script>
+</body>
+</html>
