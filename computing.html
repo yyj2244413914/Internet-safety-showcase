@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SecureDataFlow 协同计算任务模块</title>
+  <!-- 引入外部资源 -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+
+  <!-- Tailwind 配置 -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#165DFF',
+            success: '#52C41A',
+            warning: '#FAAD14',
+            danger: '#FF4D4F',
+            dark: '#1D2129',
+            'dark-2': '#4E5969',
+            'light-1': '#F2F3F5',
+            'light-2': '#E5E6EB'
+          },
+          fontFamily: {
+            inter: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      }
+    }
+  </script>
+
+  <!-- 自定义工具类 -->
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .card-shadow {
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      }
+      .gradient-bg {
+        background: linear-gradient(135deg, #165DFF 0%, #0E42D2 100%);
+      }
+      .pulse-animation {
+        animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+      }
+      .node-hover {
+        transition: all 0.2s ease;
+      }
+      .node-hover:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(22, 93, 255, 0.15);
+      }
+      .flow-line {
+        stroke: #E5E6EB;
+        stroke-width: 2;
+        stroke-dasharray: 4;
+      }
+      .flow-line-active {
+        stroke: #165DFF;
+        stroke-dasharray: none;
+        animation: flow 2s linear infinite;
+      }
+      .connection-hotspot {
+        cursor: crosshair;
+        z-index: 10;
+      }
+      @keyframes flow {
+        from { stroke-dashoffset: 20; }
+        to { stroke-dashoffset: 0; }
+      }
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+      }
+    }
+  </style>
+</head>
+
+<body class="font-inter bg-gray-50 text-dark min-h-screen flex flex-col">
+  <!-- 顶部导航栏 -->
+  <header class="bg-white shadow-sm fixed w-full z-50 transition-all duration-300" id="header">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between items-center h-16">
+        <!-- 左侧Logo和标题 -->
+        <div class="flex items-center">
+          <div class="flex-shrink-0 flex items-center">
+            <div class="w-8 h-8 rounded-md gradient-bg flex items-center justify-center">
+              <i class="fa fa-shield text-white"></i>
+            </div>
+            <span class="ml-2 text-lg font-semibold text-dark">SecureDataFlow 协同计算任务模块</span>
+          </div>
+        </div>
+
+        <!-- 右侧工具栏 -->
+        <div class="flex items-center space-x-4">
+          <!-- 刷新按钮 -->
+          <button class="p-2 rounded-full hover:bg-light-1 transition-colors" id="refreshBtn">
+            <i class="fa fa-refresh text-dark-2"></i>
+          </button>
+
+          <!-- 最后更新时间 -->
+          <div class="text-sm text-dark-2 hidden md:block">
+            最后更新: <span id="lastUpdate">加载中...</span>
+          </div>
+
+          <!-- 用户信息 -->
+          <div class="flex items-center">
+            <img class="h-8 w-8 rounded-full object-cover" src="https://picsum.photos/id/1005/200/200" alt="用户头像">
+            <span class="ml-2 text-sm font-medium hidden md:block">管理员</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主内容区 -->
+  <main class="flex-1 pt-20 pb-10">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+      <!-- 页面标题 -->
+      <div class="mb-8">
+        <h1 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold text-dark">协同计算任务模块</h1>
+        <p class="text-dark-2 mt-1">可视化配置任务、选择数据、执行协议，实时监控协同计算进度</p>
+      </div>
+
+      <!-- 任务状态概览 -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="bg-white rounded-xl p-6 card-shadow">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-dark-2 text-sm">总任务数</p>
+              <h3 class="text-3xl font-bold mt-1" id="totalTasks">加载中...</h3>
+            </div>
+            <div class="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center">
+              <i class="fa fa-tasks text-primary text-xl"></i>
+            </div>
+          </div>
+          <div class="mt-4 text-xs text-success flex items-center" id="totalTasksGrowth">
+            <i class="fa fa-arrow-up mr-1"></i> 加载中...
+          </div>
+        </div>
+
+        <div class="bg-white rounded-xl p-6 card-shadow">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-dark-2 text-sm">运行中任务</p>
+              <h3 class="text-3xl font-bold mt-1" id="runningTasks">加载中...</h3>
+            </div>
+            <div class="w-12 h-12 rounded-full bg-yellow-50 flex items-center justify-center">
+              <i class="fa fa-spinner text-warning text-xl"></i>
+            </div>
+          </div>
+          <div class="mt-4 text-xs text-dark-2 flex items-center" id="avgRemainingTime">
+            <i class="fa fa-clock-o mr-1"></i> 加载中...
+          </div>
+        </div>
+
+        <div class="bg-white rounded-xl p-6 card-shadow">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-dark-2 text-sm">已完成任务</p>
+              <h3 class="text-3xl font-bold mt-1" id="completedTasks">加载中...</h3>
+            </div>
+            <div class="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center">
+              <i class="fa fa-check text-success text-xl"></i>
+            </div>
+          </div>
+          <div class="mt-4 text-xs text-success flex items-center" id="successRate">
+            <i class="fa fa-arrow-up mr-1"></i> 加载中...
+          </div>
+        </div>
+
+        <div class="bg-white rounded-xl p-6 card-shadow">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-dark-2 text-sm">失败任务</p>
+              <h3 class="text-3xl font-bold mt-1" id="failedTasks">加载中...</h3>
+            </div>
+            <div class="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center">
+              <i class="fa fa-times text-danger text-xl"></i>
+            </div>
+          </div>
+          <div class="mt-4 text-xs text-danger flex items-center" id="failedTasksTrend">
+            <i class="fa fa-arrow-down mr-1"></i> 加载中...
+          </div>
+        </div>
+      </div>
+
+      <!-- 主要内容区域 - 标签页 -->
+      <div class="border-b border-light-2 mb-6">
+        <ul class="flex flex-wrap -mb-px" id="contentTabs">
+          <li class="mr-2"><button
+              class="content-tab-btn active py-4 px-4 text-sm font-medium text-primary border-b-2 border-primary"
+              data-tab="new-task">新建协同任务</button></li>
+          <li class="mr-2"><button
+              class="content-tab-btn py-4 px-4 text-sm font-medium text-dark-2 border-b-2 border-transparent hover:text-dark hover:border-light-2"
+              data-tab="tee-verification">TEE远程证明</button></li>
+          <li class="mr-2"><button
+              class="content-tab-btn py-4 px-4 text-sm font-medium text-dark-2 border-b-2 border-transparent hover:text-dark hover:border-light-2"
+              data-tab="task-monitoring">任务运行监控</button></li>
+        </ul>
+      </div>
+
+      <!-- 新建协同任务 -->
+      <div class="content-tab active" id="new-task">
+        <div class="bg-white rounded-xl p-6 card-shadow mb-6">
+          <h2 class="text-xl font-semibold mb-6">任务发起表单</h2>
+
+          <form id="taskForm" class="space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label for="taskName" class="block text-sm font-medium text-dark mb-1">任务名称 <span
+                    class="text-danger">*</span></label>
+                <input type="text" id="taskName" name="taskName" required
+                  class="w-full px-4 py-2 rounded-lg border border-light-2 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary text-sm"
+                  placeholder="请输入任务名称">
+              </div>
+
+              <div>
+                <label for="taskType" class="block text-sm font-medium text-dark mb-1">计算类型 <span
+                    class="text-danger">*</span></label>
+                <select id="taskType" name="taskType" required
+                  class="w-full px-4 py-2 rounded-lg border border-light-2 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary text-sm">
+                  <option value="">请选择计算类型</option>
+                  <!-- 计算类型选项将通过API加载 -->
+                </select>
+              </div>
+
+              <div>
+                <label for="participatingDepartments" class="block text-sm font-medium text-dark mb-1">参与部门 <span
+                    class="text-danger">*</span></label>
+                <select id="participatingDepartments" name="participatingDepartments" multiple required
+                  class="w-full px-4 py-2 rounded-lg border border-light-2 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary text-sm h-24">
+                  <!-- 部门选项将通过API加载 -->
+                </select>
+                <p class="text-xs text-dark-2 mt-1">按住Ctrl键可多选</p>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-dark mb-1">数据资源选择 <span class="text-danger">*</span></label>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="dataSourcesContainer">
+                <!-- 数据资源将通过API加载 -->
+                <div class="col-span-full text-center py-8 text-dark-2">
+                  <i class="fa fa-circle-o-notch fa-spin mr-2"></i>加载数据资源中...
+                </div>
+              </div>
+              <button type="button" class="mt-3 text-sm text-primary flex items-center">
+                <i class="fa fa-plus-circle mr-1"></i> 添加更多数据源
+              </button>
+            </div>
+
+            <div>
+              <label for="taskDescription" class="block text-sm font-medium text-dark mb-1">任务描述</label>
+              <textarea id="taskDescription" name="taskDescription" rows="3"
+                class="w-full px-4 py-2 rounded-lg border border-light-2 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary text-sm"
+                placeholder="请输入任务描述信息"></textarea>
+            </div>
+
+            <div>
+              <label for="taskSchedule" class="block text-sm font-medium text-dark mb-1">任务调度</label>
+              <select id="taskSchedule" name="taskSchedule"
+                class="w-full px-4 py-2 rounded-lg border border-light-2 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary text-sm">
+                <option value="immediate">立即执行</option>
+                <option value="scheduled">定时执行</option>
+                <option value="manual">手动触发</option>
+              </select>
+            </div>
+
+            <div class="flex justify-end space-x-4 pt-4 border-t border-light-2">
+              <button type="button"
+                class="px-6 py-2 border border-light-2 rounded-lg text-dark-2 hover:bg-light-1 transition-colors">
+                保存为草稿
+              </button>
+              <button type="button" id="createTaskBtn"
+                class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                创建并执行任务
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- TEE远程证明 -->
+    <div class="content-tab hidden" id="tee-verification">
+      <div class="bg-white rounded-xl p-6 card-shadow mb-6">
+        <h2 class="text-xl font-semibold mb-6">TEE远程证明模块</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="teeVerificationContainer">
+          <!-- TEE节点信息将通过API加载 -->
+          <div class="col-span-full text-center py-12 text-dark-2">
+            <i class="fa fa-circle-o-notch fa-spin mr-2"></i>加载TEE节点信息中...
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 任务运行监控 -->
+    <div class="content-tab hidden" id="task-monitoring">
+      <div class="bg-white rounded-xl p-6 card-shadow mb-6">
+        <h2 class="text-xl font-semibold mb-6">任务运行监控</h2>
+
+        <div class="mb-6">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-medium">当前运行任务</h3>
+            <div class="relative">
+              <input type="text" placeholder="搜索任务..."
+                class="pl-8 pr-4 py-2 text-sm border border-light-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary">
+              <i class="fa fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-dark-2"></i>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-light-2">
+              <thead>
+                <tr>
+                  <th class="px-4 py-3 bg-light-1 text-left text-xs font-medium text-dark-2 uppercase tracking-wider">
+                    任务ID</th>
+                  <th class="px-4 py-3 bg-light-1 text-left text-xs font-medium text-dark-2 uppercase tracking-wider">
+                    任务名称</th>
+                  <th class="px-4 py-3 bg-light-1 text-left text-xs font-medium text-dark-2 uppercase tracking-wider">类型
+                  </th>
+                  <th class="px-4 py-3 bg-light-1 text-left text-xs font-medium text-dark-2 uppercase tracking-wider">
+                    参与方</th>
+                  <th class="px-4 py-3 bg-light-1 text-left text-xs font-medium text-dark-2 uppercase tracking-wider">进度
+                  </th>
+                  <th class="px-4 py-3 bg-light-1 text-left text-xs font-medium text-dark-2 uppercase tracking-wider">状态
+                  </th>
+                  <th class="px-4 py-3 bg-light-1 text-left text-xs font-medium text-dark-2 uppercase tracking-wider">操作
+                  </th>
+                </tr>
+              </thead>
+              <tbody id="runningTasksTableBody" class="bg-white divide-y divide-light-2">
+                <!-- 运行中任务数据将通过API加载 -->
+                <tr>
+                  <td colspan="7" class="px-4 py-8 text-center text-dark-2">
+                    <i class="fa fa-circle-o-notch fa-spin mr-2"></i>加载运行中任务数据中...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 任务执行日志 -->
+        <div class="bg-white rounded-xl p-6 card-shadow">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-medium">任务执行日志</h3>
+            <select id="taskLogSelector"
+              class="text-sm border border-light-2 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary">
+              <!-- 任务日志选择选项将通过API加载 -->
+              <option value="">选择任务查看日志</option>
+            </select>
+          </div>
+
+          <div class="border border-light-2 rounded-lg h-64 overflow-y-auto p-4 bg-light-1 text-sm font-mono"
+            id="taskLogContainer">
+            <!-- 任务日志内容将通过API加载 -->
+            <div class="text-center text-dark-2 py-10">
+              请选择一个任务查看其执行日志
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    </div>
+  </main>
+
+  <script>
+    // 页面加载完成后初始化数据
+    document.addEventListener('DOMContentLoaded', function () {
+      // 加载任务状态概览数据
+      loadTaskOverviewData();
+
+      // 加载计算类型选项
+      loadTaskTypes();
+
+      // 加载参与部门选项
+      loadDepartments();
+
+      // 加载数据资源
+      loadDataSources();
+
+      // 加载可用节点
+      loadAvailableNodes();
+
+      // 加载TEE远程证明数据
+      loadTEEVerificationData();
+
+      // 加载运行中任务
+      loadRunningTasks();
+
+      // 加载任务日志选择器
+      loadTaskLogSelector();
+
+      // 初始化标签页切换
+      initTabs();
+
+      // 刷新按钮事件
+      document.getElementById('refreshBtn').addEventListener('click', function () {
+        // 显示加载状态
+        showLoadingState();
+
+        // 延迟刷新以显示加载效果
+        setTimeout(function () {
+          loadTaskOverviewData();
+          loadRunningTasks();
+          loadTEEVerificationData();
+
+          // 更新最后更新时间
+          updateLastUpdateTime();
+        }, 800);
+      });
+
+      // 创建任务按钮事件
+      document.getElementById('createTaskBtn').addEventListener('click', function () {
+        submitTaskForm();
+      });
+    });
+
+    // 显示加载状态
+    function showLoadingState() {
+      // 更新任务概览为加载状态
+      document.getElementById('totalTasks').textContent = '加载中...';
+      document.getElementById('runningTasks').textContent = '加载中...';
+      document.getElementById('completedTasks').textContent = '加载中...';
+      document.getElementById('failedTasks').textContent = '加载中...';
+
+      // 更新任务表格为加载状态
+      const tableBody = document.getElementById('runningTasksTableBody');
+      tableBody.innerHTML = `
+        <tr>
+          <td colspan="7" class="px-4 py-8 text-center text-dark-2">
+            <i class="fa fa-circle-o-notch fa-spin mr-2"></i>加载中...
+          </td>
+        </tr>
+      `;
+    }
+
+    // 更新最后更新时间
+    function updateLastUpdateTime() {
+      const now = new Date();
+      const timeString = now.toLocaleTimeString();
+      document.getElementById('lastUpdate').textContent = timeString;
+    }
+
+    // 加载任务状态概览数据
+    function loadTaskOverviewData() {
+      // 【API调用位置】获取任务概览数据
+      // 后端API端点: /api/task/overview
+      fetch('/api/task/overview')
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('网络响应不正常');
+          }
+          return response.json();
+        })
+        .then(data => {
+          // 更新页面数据
+          document.getElementById('totalTasks').textContent = data.totalTasks;
+          document.getElementById('totalTasksGrowth').innerHTML = `<i class="fa fa-arrow-up mr-1"></i> ${data.totalTasksGrowth}`;
+          document.getElementById('runningTasks').textContent = data.runningTasks;
+          document.getElementById('avgRemainingTime').innerHTML = `<i class="fa fa-clock-o mr-1"></i> ${data.avgRemainingTime}`;
+          document.getElementById('completedTasks').textContent = data.completedTasks;
+          document.getElementById('successRate').innerHTML = `<i class="fa fa-arrow-up mr-1"></i> ${data.successRate}`;
+          document.getElementById('failedTasks').textContent = data.failedTasks;
+          document.getElementById('failedTasksTrend').innerHTML = `<i class="fa fa-arrow-down mr-1"></i> ${data.failedTasksTrend}`;
+        })
+        .catch(error => {
+          console.error('加载任务概览数据失败:', error);
+          // 显示错误状态
+          document.getElementById('totalTasks').textContent = '加载失败';
+          document.getElementById('runningTasks').textContent = '加载失败';
+          document.getElementById('completedTasks').textContent = '加载失败';
+          document.getElementById('failedTasks').textContent = '加载失败';
+        });
+    }
+
+    // 加载计算类型选项
+    function loadTaskTypes() {
+      // 【API调用位置】获取计算类型
+      // 后端API端点: /api/task/types
+      fetch('/api/task/types')
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('网络响应不正常');
+          }
+          return response.json();
+        })
+        .then(data => {
+          // 获取select元素
+          const selectElement = document.getElementById('taskType');
+
+          // 清空现有选项（保留第一个空选项）
+          while (selectElement.options.length > 1) {
+            selectElement.remove(1);
+          }
+
+          // 添加选项
+          data.forEach(type => {
+            const option = document.createElement('option');
+            option.value = type.value;
+            option.textContent = type.label;
+            selectElement.appendChild(option);
+          });
+        })
+        .catch(error => {
+          console.error('加载计算类型失败:', error);
+          const selectElement = document.getElementById('taskType');
+          // 添加错误提示
+          const errorOption = document.createElement('option');
+          errorOption.value = "";
+          errorOption.textContent = "加载计算类型失败";
+          errorOption.disabled = true;
+          selectElement.appendChild(errorOption);
+        });
+    }
+
+    // 加载参与部门选项
+    function loadDepartments() {
+      // 【API调用位置】获取部门列表
+      // 后端API端点: /api/departments
+      fetch('/api/departments')
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('网络响应不正常');
+          }
+          return response.json();
+        })
+        .then(data => {
+          // 获取select元素
+          const selectElement = document.getElementById('participatingDepartments');
+
+          // 清空现有选项
+          selectElement.innerHTML = '';
+
+          // 添加选项
+          data.forEach(dept => {
+            const option = document.createElement('option');
+            option.value = dept.id;
+            option.textContent = dept.name;
+            selectElement.appendChild(option);
+          });
+        })
+        .catch(error => {
+          console.error('加载部门列表失败:', error);
+          const selectElement = document.getElementById('participatingDepartments');
+          selectElement.innerHTML = '';
+          // 添加错误提示
+          const errorOption = document.createElement('option');
+          errorOption.value = "";
+          errorOption.textContent = "加载部门失败";
+          errorOption.disabled = true;
+          selectElement.appendChild(errorOption);
+        });
+    }
+
+    // 加载数据资源
+    function loadDataSources() {
+      // 【API调用位置】获取数据资源列表
+      // 后端API端点: /api/data/sources
+      fetch('/api/data/sources')
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('网络响应不正常');
+          }
+          return response.json();
+        })
+        .then(data => {
+          // 获取容器元素
+          const container = document.getElementById('dataSourcesContainer');
+
+          // 清空容器
+          container.innerHTML = '';
+
+          // 添加数据资源
+          data.forEach(source => {
+            const sourceElement = document.createElement('div');
+            sourceElement.className = 'border border-light-2 rounded-lg p-4 hover:border-primary cursor-pointer transition-colors node-hover';
+            sourceElement.innerHTML = `
+              <div class="flex items-center">
+                <input type="checkbox" id="${source.id}" name="dataSources" value="${source.id}" class="mr-2">
+                <label for="${source.id}" class="text-sm">${source.name}</label>
+              </div>
+              <p class="text-xs text-dark-2 mt-1">部门: ${source.department} | 记录数: ${source.recordCount.toLocaleString()}</p>
+            `;
+            container.appendChild(sourceElement);
+          });
+        })
+        .catch(error => {
+          console.error('加载数据资源失败:', error);
+          const container = document.getElementById('dataSourcesContainer');
+          container.innerHTML = `
+            <div class="col-span-full text-center py-8 text-danger">
+              <i class="fa fa-exclamation-circle mr-2"></i>加载数据资源失败，请刷新页面重试
+            </div>
+          `;
+        });
+    }
+
+    // 加载可用节点
+    function loadAvailableNodes() {
+      // 【API调用位置】获取可用节点列表
+      // 后端API端点: /api/orchestration/nodes
+      fetch('/api/orchestration/nodes')
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('网络响应不正常');
+          }
+          return response.json();
+        })
+        .then(data => {
+          // 获取容器元素
+          const container = document.getElementById('availableNodesContainer');
+
+          // 清空容器
+          container.innerHTML = '';
+
+          // 添加可用节点
+          data.forEach(node => {
+            const nodeElement = document.createElement('div');
+            nodeElement.className = 'p-3 bg-light-1 rounded-lg cursor-move node-hover';
+            nodeElement.draggable = true;
+            nodeElement.dataset.nodeType = node.type;
+            nodeElement.innerHTML = `
+              <div class="flex items-center">
+                <i class="fa fa-${node.icon} text-primary mr-2"></i>
+                <span class="text-sm">${node.name}</span>
+              </div>
+            `;
+            container.appendChild(nodeElement);
+          });
+        })
+        .catch(error => {
+          console.error('加载可用节点失败:', error);
+          const container = document.getElementById('availableNodesContainer');
+          container.innerHTML = `
+            <div class="text-center py-4 text-danger">
+              <i class="fa fa-exclamation-circle mr-2"></i>加载节点失败，请刷新页面重试
+            </div>
+          `;
+        });
+    }
+
+    // 加载TEE远程证明数据
+    function loadTEEVerificationData() {
+      // 【API调用位置】获取TEE验证数据
+      // 后端API端点: /api/tee/verification
+      fetch('/api/tee/verification')
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('网络响应不正常');
+          }
+          return response.json();
+        })
+        .then(data => {
+          // 获取容器元素
+          const container = document.getElementById('teeVerificationContainer');
+
+          // 清空容器
+          container.innerHTML = '';
+
+          // 添加TEE节点
+          data.forEach(node => {
+            const statusClass = node.status === 'verified' ? 'border-success bg-green-50 text-success' : 'border-warning bg-yellow-50 text-warning';
+            const statusText = node.status === 'verified' ? '已认证' : '验证中';
+
+            const nodeElement = document.createElement('div');
+            nodeElement.className = 'border rounded-lg p-5 node-hover';
+            nodeElement.innerHTML = `
+              <div class="flex justify-between items-start mb-4">
+                <div>
+                  <h3 class="font-medium">${node.name}</h3>
+                  <p class="text-sm text-dark-2 mt-1">TEE节点 #${node.id}</p>
+                </div>
+                <div class="px-2 py-1 ${statusClass} text-xs rounded-full">
+                  ${statusText}
+                </div>
+              </div>
+
+              <div class="space-y-3">
+                <div class="flex justify-between text-sm">
+                  <span class="text-dark-2">硬件厂商</span>
+                  <span>${node.hardwareVendor}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-dark-2">SGX版本</span>
+                  <span>${node.sgxVersion}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-dark-2">CPU型号</span>
+                  <span>${node.cpuModel}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-dark-2">证明时间</span>
+                  <span>${node.attestationTime}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-dark-2">固件版本</span>
+                  <span>${node.firmwareVersion}</span>
+                </div>
+              </div>
+            `;
+            container.appendChild(nodeElement);
+          });
+        })
+        .catch(error => {
+          console.error('加载TEE验证数据失败:', error);
+          const container = document.getElementById('teeVerificationContainer');
+          container.innerHTML = `
+            <div class="col-span-full text-center py-12 text-danger">
+              <i class="fa fa-exclamation-circle mr-2"></i>加载TEE节点信息失败，请刷新页面重试
+            </div>
+          `;
+        });
+    }
+
+    // 加载运行中任务
+    function loadRunningTasks() {
+      // 【API调用位置】获取运行中任务
+      // 后端API端点: /api/tasks/running
+      fetch('/api/tasks/running')
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('网络响应不正常');
+          }
+          return response.json();
+        })
+        .then(data => {
+          // 获取表格体元素
+          const tableBody = document.getElementById('runningTasksTableBody');
+
+          // 清空表格
+          tableBody.innerHTML = '';
+
+          // 如果没有运行中的任务
+          if (data.length === 0) {
+            tableBody.innerHTML = `
+              <tr>
+                <td colspan="7" class="px-4 py-8 text-center text-dark-2">
+                  当前没有运行中的任务
+                </td>
+              </tr>
+            `;
+            return;
+          }
+
+          // 添加任务行
+          data.forEach(task => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td class="px-4 py-4 whitespace-nowrap text-sm">${task.id}</td>
+              <td class="px-4 py-4 whitespace-nowrap text-sm">${task.name}</td>
+              <td class="px-4 py-4 whitespace-nowrap text-sm">${task.type}</td>
+              <td class="px-4 py-4 whitespace-nowrap text-sm">${task.participants}</td>
+              <td class="px-4 py-4 whitespace-nowrap">
+                <div class="w-full bg-light-2 rounded-full h-2">
+                  <div class="bg-primary h-2 rounded-full" style="width: ${task.progress}%"></div>
+                </div>
+                <div class="text-xs text-dark-2 mt-1">${task.progress}%</div>
+              </td>
+              <td class="px-4 py-4 whitespace-nowrap">
+                <span class="px-2 py-1 bg-yellow-50 text-warning text-xs rounded-full">运行中</span>
+              </td>
+              <td class="px-4 py-4 whitespace-nowrap text-sm">
+                <button class="text-primary hover:text-primary/80 mr-3" onclick="viewTaskDetails('${task.id}')">查看</button>
+                <button class="text-dark-2 hover:text-dark mr-3" onclick="pauseTask('${task.id}')">暂停</button>
+                <button class="text-danger hover:text-danger/80" onclick="terminateTask('${task.id}')">终止</button>
+              </td>
+            `;
+            tableBody.appendChild(row);
+          });
+        })
+        .catch(error => {
+          console.error('加载运行中任务失败:', error);
+          const tableBody = document.getElementById('runningTasksTableBody');
+          tableBody.innerHTML = `
+            <tr>
+              <td colspan="7" class="px-4 py-8 text-center text-danger">
+                <i class="fa fa-exclamation-circle mr-2"></i>加载运行中任务失败，请刷新页面重试
+              </td>
+            </tr>
+          `;
+        });
+    }
+
+    // 加载任务日志选择器
+    function loadTaskLogSelector() {
+      // 【API调用位置】获取任务列表（用于日志选择）
+      // 后端API端点: /api/tasks
+      fetch('/api/tasks')
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('网络响应不正常');
+          }
+          return response.json();
+        })
+        .then(data => {
+          // 获取选择器元素
+          const selector = document.getElementById('taskLogSelector');
+
+          // 保留第一个空选项，清空其他选项
+          while (selector.options.length > 1) {
+            selector.remove(1);
+          }
+
+          // 添加任务选项
+          data.forEach(task => {
+            const option = document.createElement('option');
+            option.value = task.id;
+            option.textContent = `${task.id} - ${task.name}`;
+            selector.appendChild(option);
+          });
+        })
+        .catch(error => {
+          console.error('加载任务列表失败:', error);
+          const selector = document.getElementById('taskLogSelector');
+          // 保留第一个空选项，清空其他选项
+          while (selector.options.length > 1) {
+            selector.remove(1);
+          }
+          // 添加错误提示
+          const errorOption = document.createElement('option');
+          errorOption.value = "";
+          errorOption.textContent = "加载任务列表失败";
+          errorOption.disabled = true;
+          selector.appendChild(errorOption);
+        });
+    }
+
+    // 加载任务日志
+    function loadTaskLogs(taskId) {
+      if (!taskId) return;
+
+      // 【API调用位置】获取任务日志
+      // 后端API端点: /api/tasks/{taskId}/logs
+      fetch(`/api/tasks/${taskId}/logs`)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('网络响应不正常');
+          }
+          return response.text();
+        })
+        .then(logs => {
+          // 更新日志容器
+          const logContainer = document.getElementById('taskLogContainer');
+          logContainer.innerHTML = logs.replace(/\n/g, '<br>');
+
+          // 滚动到底部
+          logContainer.scrollTop = logContainer.scrollHeight;
+        })
+        .catch(error => {
+          console.error(`加载任务${taskId}日志失败:`, error);
+          const logContainer = document.getElementById('taskLogContainer');
+          logContainer.innerHTML = `
+            <div class="text-center text-danger py-10">
+              <i class="fa fa-exclamation-circle mr-2"></i>加载任务日志失败，请重试
+            </div>
+          `;
+        });
+    }
+
+    // 提交任务表单
+    function submitTaskForm() {
+      // 获取表单数据
+      const formData = {
+        taskName: document.getElementById('taskName').value,
+        taskType: document.getElementById('taskType').value,
+        participatingDepartments: Array.from(document.getElementById('participatingDepartments').selectedOptions).map(option => option.value),
+        dataSources: Array.from(document.querySelectorAll('input[name="dataSources"]:checked')).map(input => input.value),
+        taskDescription: document.getElementById('taskDescription').value,
+        taskSchedule: document.getElementById('taskSchedule').value
+      };
+
+      // 简单验证
+      if (!formData.taskName || !formData.taskType || formData.participatingDepartments.length === 0 || formData.dataSources.length === 0) {
+        alert('请填写所有必填字段');
+        return;
+      }
+
+      // 【API调用位置】提交新任务
+      // 后端API端点: /api/tasks
+      fetch('/api/tasks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+      })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('创建任务失败');
+          }
+          return response.json();
+        })
+        .then(data => {
+          alert('任务创建成功！');
+          // 重置表单
+          document.getElementById('taskForm').reset();
+          // 刷新任务列表
+          loadRunningTasks();
+          loadTaskOverviewData();
+        })
+        .catch(error => {
+          console.error('创建任务失败:', error);
+          alert('创建任务失败，请重试');
+        });
+    }
+
+    // 查看任务详情
+    function viewTaskDetails(taskId) {
+      // 【API调用位置】查看任务详情
+      // 后端API端点: /api/tasks/{taskId}
+      fetch(`/api/tasks/${taskId}`)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('获取任务详情失败');
+          }
+          return response.json();
+        })
+        .then(data => {
+          // 这里可以打开任务详情模态框或跳转到详情页
+          console.log('任务详情:', data);
+          alert(`查看任务 ${taskId} 详情: \n${JSON.stringify(data, null, 2)}`);
+        })
+        .catch(error => {
+          console.error(`获取任务${taskId}详情失败:`, error);
+          alert('获取任务详情失败，请重试');
+        });
+    }
+
+    // 暂停任务
+    function pauseTask(taskId) {
+      if (!confirm(`确定要暂停任务 ${taskId} 吗？`)) return;
+
+      // 【API调用位置】暂停任务
+      // 后端API端点: /api/tasks/{taskId}/pause
+      fetch(`/api/tasks/${taskId}/pause`, {
+        method: 'POST'
+      })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('暂停任务失败');
+          }
+          return response.json();
+        })
+        .then(data => {
+          alert(`任务 ${taskId} 已暂停`);
+          loadRunningTasks();
+        })
+        .catch(error => {
+          console.error(`暂停任务${taskId}失败:`, error);
+          alert('暂停任务失败，请重试');
+        });
+    }
+
+    // 终止任务
+    function terminateTask(taskId) {
+      if (!confirm(`确定要终止任务 ${taskId} 吗？此操作不可恢复！`)) return;
+
+      // 【API调用位置】终止任务
+      // 后端API端点: /api/tasks/{taskId}/terminate
+      fetch(`/api/tasks/${taskId}/terminate`, {
+        method: 'POST'
+      })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('终止任务失败');
+          }
+          return response.json();
+        })
+        .then(data => {
+          alert(`任务 ${taskId} 已终止`);
+          loadRunningTasks();
+          loadTaskOverviewData();
+        })
+        .catch(error => {
+          console.error(`终止任务${taskId}失败:`, error);
+          alert('终止任务失败，请重试');
+        });
+    }
+
+    // 初始化标签页切换
+    function initTabs() {
+      const tabButtons = document.querySelectorAll('.content-tab-btn');
+      const tabContents = document.querySelectorAll('.content-tab');
+
+      tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+          // 移除所有活动状态
+          tabButtons.forEach(btn => {
+            btn.classList.remove('active', 'text-primary', 'border-primary');
+            btn.classList.add('text-dark-2', 'border-transparent');
+          });
+
+          tabContents.forEach(content => {
+            content.classList.add('hidden');
+            content.classList.remove('active');
+          });
+
+          // 添加当前活动状态
+          button.classList.add('active', 'text-primary', 'border-primary');
+          button.classList.remove('text-dark-2', 'border-transparent');
+
+          const tabId = button.getAttribute('data-tab');
+          const activeContent = document.getElementById(tabId);
+          activeContent.classList.remove('hidden');
+          activeContent.classList.add('active');
+        });
+      });
+
+      // 为任务日志选择器添加事件监听
+      document.getElementById('taskLogSelector').addEventListener('change', function () {
+        const taskId = this.value;
+        if (taskId) {
+          loadTaskLogs(taskId);
+        } else {
+          document.getElementById('taskLogContainer').innerHTML = `
+            <div class="text-center text-dark-2 py-10">
+              请选择一个任务查看其执行日志
+            </div>
+          `;
+        }
+      });
+    }
+  </script>
+</body>
+
+</html>
