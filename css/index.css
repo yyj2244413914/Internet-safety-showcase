@@ -4306,37 +4306,16 @@
 }
 
 /* 适配 */
-    /* 手机*/
-    @media screen and (max
-  height: 120px;
-  border: solid 3px #FCFCFE;
-  border-radius: 0 !important;
-  box-shadow: 0 2px 4px -2px rgb(0 0 0 / 15%);
-  flex-shrink: 0;
+/* 手机 */
+@media screen and (max-width: 550px) {
+  .li5box-car > img {
+    height: 120px;
+    border: solid 3px #FCFCFE;
+    border-radius: 0 !important;
+    box-shadow: 0 2px 4px -2px rgb(0 0 0 / 15%);
+    flex-shrink: 0;
+  }
 }
-
-/* 适配 */
-    /* 手机*/
-    @media screen and (max-width: 550px) {
-      .content-li{
-        display: block;
-      }
-       .li1{
-        display: block !important;
-      }
-      .li4-box{
-        display: block;
-      }
-      .li6-box{
-        display: block;
-      }
-      .li7-box{
-        display: block;
-      }
-      .li5box-car{
-        width:auto;
-      }
-    }
 
 /* 轮播图样式 */
 .carousel-container {
@@ -4557,10 +4536,6 @@
   transform: scale(1.05); /* 悬停时图片轻微放大 */
 }
 
-/* 5 专业教师部分 - 叠
-  transform: scale(1.05); /* 悬停时图片轻微放大 */
-}
-
 /* 5 专业教师部分 - 叠卡轮播效果 */
 .li5-box {
   position: relative;
@@ -4583,9 +4558,4 @@
   height: 250px;
   box-sizing: border-box;
   text-align: center
-
-
-
-
-
-
+}

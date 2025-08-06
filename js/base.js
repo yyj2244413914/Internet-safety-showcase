@@ -23,22 +23,23 @@
     var active = sessionStorage.getItem('wttandroid')
     
     
-    if (active && active == 'true') { 
-      
-      //非首次登录，且是开白
+ // 将默认模式改为白天模式
+  // 原代码: if (active && active == 'true') {
+  if (!active || active == 'true') { // 修改判断条件，首次登录默认白天
+    sessionStorage.setItem('wttandroid', 'true') // 强制设置为白天模式
+    
+    $('#myRadio').removeClass('active')
+    $('.navigation').removeClass('active')
 
-      $('#myRadio').removeClass('active')
-      $('.navigation').removeClass('active')
-
-      root.style.setProperty('--backColor', '#f4f1f1ff')
-      root.style.setProperty('--borderline', '#f4f1f1ff')
-      root.style.setProperty('--headerCOlor', '#f4f1f1ff')
-      root.style.setProperty('--headerhover', 'rgb(255, 255, 255,.8)')
-      root.style.setProperty('--headerFont', '#00283A' )
-      root.style.setProperty('--fontColor', '#f4f1f1ff' )
-      root.style.setProperty('--mainColor', '#ff8181' )
-      root.style.setProperty('--bagColor', '#f4f5f7')
-    } else { 
+    root.style.setProperty('--backColor', '#f4f1f1ff')
+    root.style.setProperty('--borderline', '#f4f1f1ff')
+    root.style.setProperty('--headerCOlor', '#f4f1f1ff')
+    root.style.setProperty('--headerhover', 'rgb(255, 255, 255,.8)')
+    root.style.setProperty('--headerFont', '#00283A' )
+    root.style.setProperty('--fontColor', '#f4f1f1ff' )
+    root.style.setProperty('--mainColor', '#ff8181' )
+    root.style.setProperty('--bagColor', '#f4f5f7')
+  } else { 
 
       //首次登录或是开黑时 默认黑色
 
