@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SecureDataFlow</title>
+
+    <link rel="stylesheet" href="./css/index.css">
+    <link rel="stylesheet" href="./css/base.css">
+    <link rel="stylesheet" href="./css/music.css">
+
+    <script src="D:\decompressstore\web-resume-resume-master\js\jq.js"></script>
+    <script src="./js/jquery-3.7.1.js"></script>
+    <script type="text/javascript" src="./js/paper-fullmin.js"></script>
+
+</head>
+
+<body>
+    <!-- loadding效果 -->
+    <div class="lodding-wrap">
+    </div>
+
+    <!-- 背景粒子效果 -->
+    <div>
+        <canvas class="canvas-wrap" id="triangle-lost-in-space" resize="true"></canvas>
+    </div>
+
+    <!-- 遮罩层 -->
+    <div class="zhezhao" id="zhezhao">
+        <span class="close"><svg t="1649229755294" class="icon" viewBox="0 0 1024 1024" version="1.1"
+                xmlns="http://www.w3.org/2000/svg" p-id="4692" width="32" height="32">
+                <path
+                    d="M512 0C229.187368 0 0 229.187368 0 512 0 794.812632 229.187368 1024 512 1024 794.812632 1024 1024 794.812632 1024 512 1024 229.187368 794.812632 0 512 0ZM512 970.105263C259.368421 970.105263 53.894737 764.631579 53.894737 512 53.894737 259.368421 259.368421 53.894737 512 53.894737 764.631579 53.894737 970.105263 259.368421 970.105263 512 970.105263 764.631579 764.631579 970.105263 512 970.105263ZM550.130526 512 719.629474 342.366316C730.273684 331.856842 730.273684 314.88 719.629474 304.370526 709.12 293.726316 692.143158 293.726316 681.633684 304.370526L512 473.869474 342.366316 304.370526C331.856842 293.726316 314.88 293.726316 304.370526 304.370526 293.726316 314.88 293.726316 331.856842 304.370526 342.366316L473.869474 512 304.370526 681.633684C293.726316 692.143158 293.726316 709.12 304.370526 719.629474 309.625263 724.884211 316.496842 727.578947 323.368421 727.578947 330.24 727.578947 337.111579 724.884211 342.366316 719.629474L512 550.130526 681.633684 719.629474C686.888421 724.884211 693.76 727.578947 700.631579 727.578947 707.503158 727.578947 714.374737 724.884211 719.629474 719.629474 730.273684 709.12 730.273684 692.143158 719.629474 681.633684L550.130526 512Z"
+                    p-id="4693"></path>
+            </svg></span>
+        <video id="videoResumeC" controls="" name="media">
+            <source src="music/乌鸦.mp4" type="video/mp4">
+        </video>
+    </div>
+
+    <!-- 主体部分 -->
+    <div class="box">
+
+        <!-- 导航栏 -->
+        <div class="header borderafter">
+            <!-- 后退button -->
+            <a style="position: absolute;left:50px;" href="javascript:history.back()">
+                <svg t="1649246285004" class="icon" viewBox="0 0 1024 1024" version="1.1"
+                    xmlns="http://www.w3.org/2000/svg" p-id="3737" width="20" height="20">
+                    <path
+                        d="M98 468.9l322.8-322.8v184.4C743.6 376.7 881.9 607.3 928 837.8 812.7 676.4 651.3 602.6 420.8 602.6v189.1L98 468.9z"
+                        p-id="3738" fill="#254665"></path>
+                </svg>
+            </a>
+
+            <div class="col">
+                <span>SecureDataFlow:基于TEE的安全数据流通系统</span>
+                <!-- 右边操作栏 -->
+
+                <div class="header-right">
+                    <!-- 按钮 -->
+                    <div class="min_menu-wrap" id="minmenu">
+                        <span class="min_menu"></span>
+                    </div>
+                    <!-- 列表 -->
+                    <div class="menu_list">
+                        <!-- 栏目 -->
+                         <ul class="header-nav">
+                        <li class="active"><a href="./index.html">主页</a></li>
+                        <li><a href="./literature.html">开发者空间</a></li>
+                        <li><a href="./music.html">交流论坛</a></li>
+                        <li><a href="./game.html">了解产品</a></li>
+                        <li><a href="./fineart.html">开发团队介绍</a></li>
+                        <li>
+                            <a href="./login.html" class="login-with-avatar">
+                                <span>登录/注册</span>
+                                <div class="avatar unlogged">
+                                    <svg class="avatar-icon" viewBox="0 0 24 24" width="20" height="20">
+                                        <circle cx="12" cy="8" r="4" fill="#ccc"/>
+                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" fill="#ccc"/>
+                                    </svg>
+                                </div>
+                            </a>
+                        </li>
+                    </ul>
+                        <!-- 开关灯 -->
+                        <span class="kaig-bottm">
+                            <svg t="1649159647627" class="icon" viewBox="0 0 1024 1024" version="1.1"
+                                xmlns="http://www.w3.org/2000/svg" p-id="2250" width="15" height="15">
+                                <path
+                                    d="M1008.535135 710.670332l-70.446388 116.386904a112.099975 112.099975 0 0 1-140.572857 43.829042l-69.422645-17.083729c-5.502624 3.1992-11.133217 6.3984-16.763809 9.341665l-18.299425 62.896276C687.335435 981.514621 639.4754 1023.744064 582.657604 1023.744064H441.764828c-56.817796 0-104.677831-42.293427-110.308423-97.703574l-18.299425-62.896276a422.166458 422.166458 0 0 1-16.827793-9.341665l-69.614597 17.083729a112.163959 112.163959 0 0 1-140.508873-43.893026L15.631361 710.542364a107.493127 107.493127 0 0 1 32.43989-144.731817L96.251206 518.910272a410.649338 410.649338 0 0 1 0-14.204448l-48.179955-46.836291a107.365159 107.365159 0 0 1-32.375906-144.731817l70.190452-116.450888a112.099975 112.099975 0 0 1 140.572857-43.893026l69.550612 17.083729c5.566608-3.1992 11.133217-6.3984 16.827794-9.341665l18.299425-62.896276C336.831061 42.229443 384.691096 0 441.508892 0H582.529636c56.817796 0 104.677831 42.293427 110.372407 97.63959l18.235441 62.704324c5.75856 3.007248 11.325169 6.142464 16.827793 9.341665l69.678581-17.083729a112.163959 112.163959 0 0 1 140.508873 43.893026l70.446388 116.514872a107.493127 107.493127 0 0 1-32.375906 144.731817l-48.179955 46.772307a414.616346 414.616346 0 0 1 0 14.204448l48.243939 46.836291c47.092227 31.928018 62.192452 94.952262 32.247938 145.115721z m-213.066733-142.23644l3.391152-31.032242a246.210447 246.210447 0 0 0 0-51.699076l-3.263184-30.904274 93.992502-91.305173-53.554612-88.553862-131.615096 32.311922-23.546113-16.059985a294.134466 294.134466 0 0 0-48.627844-26.809297l-27.513121-11.901025L568.453156 127.968008H455.649356L419.370426 252.736816l-27.705074 11.965009c-16.635841 7.166208-32.951762 16.187953-48.499875 26.745313l-23.610097 15.996001-131.487128-32.247938-53.36266 88.489878 94.056486 91.433141-3.263184 30.968258a247.874031 247.874031 0 0 0 0 51.699076l3.1992 30.904274-93.928518 91.369157 53.554612 88.489878 131.551112-32.311922 23.610097 16.059985c15.292177 10.429393 31.544114 19.451137 48.563859 26.809297l27.577106 11.965009L455.905292 895.776056h112.611848l36.342914-124.768808 27.64109-11.965009c16.699825-7.166208 32.951762-16.187953 48.563859-26.745313l23.546113-15.996001 131.423144 32.247938 53.68258-88.745814-94.184454-91.369157zM512.147232 615.846038c57.329668 0 103.846038-46.516371 103.974006-103.974006 0-57.329668-46.644339-103.974006-103.974006-103.974007S408.173225 454.542364 408.173225 511.872032 454.817564 615.846038 512.147232 615.846038z m0 127.968008c-127.968008 0-231.942014-103.910022-231.942015-231.942014 0-127.968008 103.910022-231.942014 231.942015-231.942015 127.968008 0 231.942014 103.910022 231.942014 232.133967A232.133967 232.133967 0 0 1 512.147232 743.814046z"
+                                    p-id="2251"></path>
+                            </svg>
+                            <!-- 开关按钮 -->
+                            <span class="my-radio active" id="myRadio">
+                                <i></i>
+                            </span>
+                            <svg t="1649159678284" class="icon" viewBox="0 0 1024 1024" version="1.1"
+                                xmlns="http://www.w3.org/2000/svg" p-id="3376" width="15" height="15">
+                                <path
+                                    d="M505.4 878.6c-196.7 0-358-150.9-374.9-343.1 1-18.6 16.1-33.4 34.9-33.4 10.8 0 20.5 4.8 26.9 12.4 0.2 0.3 0.5 0.1 0.5-0.7 41.6 44.2 100.5 71.9 166.1 71.9 127.1 0 230.1-103 230.1-230.1 0-66.1-28-125.1-72.6-166.8 0.1-0.1 0.5-0.1 0.3-0.3-7-6.5-11.4-15.7-11.4-26.1 0-19 14.9-34.1 33.7-35.3 192.1 17.1 342.9 178.3 342.9 375 0 208-168.5 376.5-376.5 376.5z"
+                                    p-id="3377"></path>
+                            </svg>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- 顶部导航 -->
+        <div class="navigation">
+            <div class="nav-titleBox co zz">
+
+                <div class="co-left"></div>
+
+                <div class="co-right "></div>
+
+            </div>
+        </div>
+
+        <!-- 主要内容 -->
+        <div class="container content zz">
+            <div class="main-content" id="next-one">
+                <!-- 成绩 -->
+                <div class="content-li li1">
+                    <div class="li1-box borderbefore">
+                        <span>4.0</span><span class="tag">+</span>
+                        <div class="borderbotm"></div>
+                        <p style="font-size: 18px;">产品最新版本</p>
+                    </div>
+                    <div class="li1-box borderbefore">
+                        <span>2000</span><span class="tag">+</span>
+                        <div class="borderbotm"></div>
+                        <p style="font-size: 18px;">注册用户数</p>
+                    </div>
+                    <div class="li1-box borderbefore">
+                        <span>200</span><span class="tag">+</span>
+                        <div class="borderbotm"></div>
+                        <p style="font-size: 18px;">会员数</p>
+                    </div>
+                </div>
+
+                <!-- 文字 -->
+                <div class="content-li li2">
+                    <h3>
+                        <span>     新闻资讯</span>
+                        <div class="borderbotm"></div>
+                        <span>01</span>
+                    </h3>
+                    <div class="carbox li2-box">
+                        <div class="carousel-container">
+                            <div class="carousel-wrapper" id="carousel">
+                                <div class="carousel-slide active">
+                                    <a href="https://ts2.tech/en/trusted-execution-environment-tee-hardware-news-june-july-2025/?utm_source=chatgpt.com" target="_blank" class="slide-link">
+                                        <img src="./img/new1.png" alt="新闻1">
+                                        <div class="slide-content">
+                                            <h4>Trusted Execution Environment (TEE) Hardware News</h4>
+                                            <p>Trusted Execution Environments (TEEs) – secure  hardware enclaves that protect code and data – have seen significant developments in mid-2025. Below is a comprehensive overview of the latest TEE-related hardware announcements, market trends, security updates, use cases, expert insights, and policy moves from June and July 2025.</p>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="carousel-slide">
+                                    <a href="https://www.reuters.com/world/china/nvidia-says-its-chips-have-no-backdoors-after-china-flags-h20-security-concerns-2025-07-31/?utm_source=chatgpt.com" target="_blank" class="slide-link">
+                                        <img src="./img/new2.png" alt="新闻2">  
+                                        <div class="slide-content">
+                                            <h4>Nvidia says its chips have no 'backdoors' after China flags H20 security concerns</h4>
+                                            <p>BEIJING/SAN FRANCISCO, July 31 (Reuters) - Nvidia (NVDA.O), opens new tab said on Thursday its products have no "backdoors" that would allow remote access or control after China raised concerns over potential security risks in the firm's H20 artificial intelligence chip.
+The Cyberspace Administration of China, the country's internet regulator, said it was concerned by a U.S. proposal for advanced chips sold abroad to be equipped with tracking and positioning functions. The CAC's move cast uncertainty over the U.S. company's sales prospects in China weeks after a U.S. export ban was reversed.</p>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="carousel-slide">
+                                    <a href="https://www.reuters.com/technology/cybersecurity/chinese-cyber-agency-recommends-review-intel-products-sold-china-2024-10-16/?utm_source=chatgpt.com" target="_blank" class="slide-link">
+                                        <img src="./img/new3.png" alt="新闻3">
+                                        <div class="slide-content">
+                                            <h4>Chinese cyber association calls for review of Intel products sold in China</h4>
+                                            <p>BEIJING, Oct 16 (Reuters) - Intel (INTC.O), opens new tab products sold in China should be subject to a security review, the Cybersecurity Association of China (CSAC) said on Wednesday, alleging the U.S. chipmaker has "constantly harmed" the country's national security and interests.
+While CSAC is an industry group rather than a government body, it has close ties to the Chinese state and the raft of accusations against Intel, published in a long post on its official WeChat account, could trigger a security review from China's powerful cyberspace regulator, the Cyberspace Administration of China (CAC).</p>
+                                        </div>
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="carousel-nav">
+                                <button class="nav-btn prev" id="prevBtn">‹</button>
+                                <button class="nav-btn next" id="nextBtn">›</button>
+                            </div>
+                            <div class="carousel-dots">
+                                <span class="dot active" data-slide="0"></span>
+                                <span class="dot" data-slide="1"></span>
+                                <span class="dot" data-slide="2"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+
+                <!-- MV -->
+                <div class="content-li li3">
+                    <h3>
+                        <span>    功能演示</span>
+                        <div class="borderbotm"></div>
+                        <span>02</span>
+                    </h3>
+                    <div class="carbox li3-box">
+                        <div class="play-buttom" id="playbuttom">
+
+                            <span><svg t="1649146869552" class="icon" viewBox="0 0 1024 1024" version="1.1"
+                                    xmlns="http://www.w3.org/2000/svg" p-id="20204" width="50" height="50">
+                                    <path d="M657.92 535.04l-256-160v320z" p-id="20205"
+                                        data-spm-anchor-id="a313x.7781069.0.i27" class="selected" fill="#ffffff"></path>
+                                </svg></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 能力 -->
+                <div class="content-li li4">
+                    <h3>
+                        <span>    产品特色</span>
+                        <div class="borderbotm"></div>
+                        <span>03</span>
+                    </h3>
+                    <div class="li4-box">
+                        <div class="carbox">
+                            <svg t="1649230330671" class="icon" viewBox="0 0 1024 1024" version="1.1"
+                                xmlns="http://www.w3.org/2000/svg" p-id="1638" width="40" height="40">
+                                <path
+                                    d="M488.96 506.88h40.96v307.2h-40.96zM803.84 737.28h-97.28c-45.056 0-81.92-36.864-81.92-81.92V502.272h40.96V655.36c0 22.528 18.432 40.96 40.96 40.96h97.28v40.96zM312.32 737.28H215.04v-40.96h97.28c22.528 0 40.96-18.432 40.96-40.96V502.272h40.96V655.36c0 45.056-36.864 81.92-81.92 81.92z"
+                                    fill="#254665" p-id="1639"></path>
+                                <path
+                                    d="M509.44 942.08c-46.592 0-84.48-37.888-84.48-84.48S462.848 773.12 509.44 773.12s84.48 37.888 84.48 84.48-37.888 84.48-84.48 84.48z m0-128c-24.064 0-43.52 19.456-43.52 43.52s19.456 43.52 43.52 43.52 43.52-19.456 43.52-43.52-19.456-43.52-43.52-43.52zM171.52 798.72c-46.592 0-84.48-37.888-84.48-84.48S124.928 629.76 171.52 629.76 256 667.648 256 714.24 218.112 798.72 171.52 798.72z m0-128c-24.064 0-43.52 19.456-43.52 43.52s19.456 43.52 43.52 43.52 43.52-19.456 43.52-43.52-19.456-43.52-43.52-43.52zM847.36 798.72c-46.592 0-84.48-37.888-84.48-84.48s37.888-84.48 84.48-84.48 84.48 37.888 84.48 84.48-37.888 84.48-84.48 84.48z m0-128c-24.064 0-43.52 19.456-43.52 43.52s19.456 43.52 43.52 43.52 43.52-19.456 43.52-43.52-19.456-43.52-43.52-43.52z"
+                                    fill="#254665" p-id="1640"></path>
+                                <path
+                                    d="M683.52 543.232H319.488c-90.112 0-163.328-73.216-163.328-163.328 0-90.112 73.216-163.328 163.328-163.328h7.68C344.064 138.752 413.696 81.92 495.616 81.92c69.632 0 132.608 42.496 159.232 105.472 9.728-1.536 19.456-2.56 29.184-2.56 98.816 0 179.2 80.384 179.2 179.2-0.512 98.816-80.896 179.2-179.712 179.2zM319.488 258.048c-67.584 0-122.368 54.784-122.368 122.368s54.784 122.368 122.368 122.368h364.544c76.288 0 138.24-61.952 138.24-138.24s-61.952-138.24-138.24-138.24c-12.288 0-24.576 1.536-36.864 5.12l-19.456 5.12-5.632-18.944C605.696 161.792 553.472 122.88 495.616 122.88c-68.096 0-124.416 51.2-131.584 118.784l-2.048 22.016-21.504-3.584c-7.168-1.536-14.336-2.048-20.992-2.048z"
+                                    fill="#254665" p-id="1641"></path>
+                                <path
+                                    d="M655.36 640H307.2V424.96c0-33.792 27.648-61.44 61.44-61.44h348.16v215.04c0 33.792-27.648 61.44-61.44 61.44z"
+                                    fill="#254665" opacity=".18" p-id="1642"></path>
+                            </svg>
+                            <h4>UI界面设计</h4>
+                            <p>
+                                CSS基础静态页面<br>
+                                SVG图标<br>
+                                canvas动画效果<br>
+                            </p>
+                            <a></a>
+                        </div>
+                        <div class="carbox">
+                            <svg t="1649230368898" class="icon" viewBox="0 0 1024 1024" version="1.1"
+                                xmlns="http://www.w3.org/2000/svg" p-id="1847" width="40" height="40">
+                                <path
+                                    d="M153.6 460.8h-40.96V179.2c0-45.056 34.816-81.92 78.336-81.92H921.6v230.4h-40.96V138.24H190.976c-20.48 0-37.376 18.432-37.376 40.96v281.6zM843.776 783.36H112.64v-216.064h40.96V742.4h690.176c20.48 0 37.376-18.432 37.376-40.96v-141.824h40.96V701.44c-0.512 45.056-35.328 81.92-78.336 81.92zM220.16 885.76h593.92v40.96H220.16z"
+                                    fill="#333333" p-id="1848"></path>
+                                <path
+                                    d="M418.304 388.096l17.408 83.968 27.648-83.968H481.28l24.576 82.432 16.384-82.432h36.864l-27.648 130.048h-39.424L470.528 455.68 450.56 518.144h-39.424l-29.696-130.048h36.864zM611.328 388.096l17.408 83.968 27.648-83.968h17.92l24.576 82.432 16.384-82.432h36.864l-27.648 130.048h-39.424L663.552 455.68l-19.968 62.464H604.16l-29.696-130.048h36.864zM804.352 388.096l17.408 83.968 27.648-83.968h17.92l24.576 82.432 16.384-82.432h36.864l-27.648 130.048h-39.424L856.576 455.68l-19.968 62.464h-39.424l-29.696-130.048h36.864z"
+                                    fill="#EB4446" p-id="1849"></path>
+                                <path
+                                    d="M839.168 445.44h-512V179.2c0-33.792 27.648-61.44 61.44-61.44h512v266.24c0 33.792-27.648 61.44-61.44 61.44z"
+                                    fill="#333333" opacity=".18" p-id="1850"></path>
+                                <path d="M496.64 762.88h40.96v143.36h-40.96z" fill="#333333" p-id="1851"></path>
+                            </svg>
+                            <h4>网页制作</h4>
+                            <p>
+                                HTML、CSS渲染<br>
+                                JS交互<br>
+                                简单h5小游戏<br>
+                            </p>
+                            <a href="game.html">跳转至游戏样例</a>
+                        </div>
+                        <div class="carbox">
+                            <svg t="1649230380175" class="icon" viewBox="0 0 1024 1024" version="1.1"
+                                xmlns="http://www.w3.org/2000/svg" p-id="2002" width="40" height="40">
+                                <path
+                                    d="M738.304 689.664h-59.392v-40.96h59.392c89.6 0 162.816-74.24 162.816-164.864 0-91.136-73.216-164.864-162.816-164.864-9.216 0-18.944 1.024-28.16 2.56l-21.504 3.584-2.048-22.016C677.376 211.968 602.112 143.36 512 143.36c-90.624 0-165.888 68.608-175.104 159.744l-2.048 22.016-21.504-3.584c-9.216-1.536-18.432-2.56-28.16-2.56-89.6 0-162.816 74.24-162.816 164.864 0 91.136 73.216 164.864 162.816 164.864h59.904v40.96H285.184c-112.128 0-203.776-92.672-203.776-205.824s91.136-205.824 203.776-205.824c4.608 0 9.728 0 14.336 0.512C319.488 176.64 407.04 102.4 511.488 102.4c104.96 0 192.512 74.24 212.48 175.616 4.608-0.512 9.216-0.512 14.336-0.512 112.128 0 203.776 92.672 203.776 205.824s-91.136 206.336-203.776 206.336z"
+                                    fill="#333333" p-id="2003"></path>
+                                <path
+                                    d="M574.464 679.936L512 617.984l-62.464 61.952-28.672-28.672 91.136-91.648 91.136 91.648z"
+                                    fill="#EB4446" p-id="2004"></path>
+                                <path d="M491.52 614.4h40.96v171.52h-40.96z" fill="#EB4446" p-id="2005"></path>
+                                <path
+                                    d="M512 928.768c-3.584 0-7.68-1.024-10.752-3.072l-187.392-119.296c-6.144-3.584-9.728-10.24-9.728-17.408v-239.104c0-7.168 3.584-13.312 9.728-17.408l187.392-119.296c6.656-4.096 15.36-4.096 22.016 0l187.392 119.296c6.144 3.584 9.728 10.24 9.728 17.408V788.48c0 7.168-3.584 13.312-9.728 17.408l-187.392 119.296c-3.584 2.56-7.68 3.584-11.264 3.584z m-166.912-151.552l166.912 106.496 166.912-106.496v-216.576L512 454.656l-166.912 106.496v216.064z m354.304 11.264z"
+                                    fill="#333333" p-id="2006"></path>
+                                <path
+                                    d="M675.84 675.84H286.72V409.6c0-33.792 27.648-61.44 61.44-61.44h389.12v266.24c0 33.792-27.648 61.44-61.44 61.44z"
+                                    fill="#333333" opacity=".18" p-id="2007"></path>
+                            </svg>
+                            <h4>算法与数据结构</h4>
+                            <p>
+                                简单的算法<br>
+                                基本的数据结构<br>
+
+                            </p>
+                            <a></a>
+                        </div>
+                        <div class="carbox">
+                            <svg t="1649230391217" class="icon" viewBox="0 0 1024 1024" version="1.1"
+                                xmlns="http://www.w3.org/2000/svg" p-id="2160" width="40" height="40">
+                                <path
+                                    d="M512 942.08c-99.328 0-174.08-184.832-174.08-430.08s74.752-430.08 174.08-430.08 174.08 184.832 174.08 430.08-74.752 430.08-174.08 430.08z m0-819.2c-62.976 0-133.12 159.744-133.12 389.12s70.144 389.12 133.12 389.12 133.12-159.744 133.12-389.12-70.144-389.12-133.12-389.12z"
+                                    fill="#333333" p-id="2161"></path>
+                                <path d="M102.4 491.52h814.592v40.96H102.4z" fill="#EB4446" p-id="2162"></path>
+                                <path
+                                    d="M512 942.08c-85.504 0-167.936-25.088-239.104-72.192l22.528-33.792C359.936 878.592 434.688 901.12 512 901.12c214.528 0 389.12-174.592 389.12-389.12s-174.592-389.12-389.12-389.12-389.12 174.592-389.12 389.12c0 82.944 25.6 161.792 74.24 228.864l-33.28 24.064C110.08 691.2 81.92 603.648 81.92 512c0-237.056 193.024-430.08 430.08-430.08s430.08 193.024 430.08 430.08-193.024 430.08-430.08 430.08z"
+                                    fill="#333333" p-id="2163"></path>
+                                <path
+                                    d="M860.16 793.6H419.84V496.64c0-33.792 27.648-61.44 61.44-61.44h440.32v296.96c0 33.792-27.648 61.44-61.44 61.44z"
+                                    fill="#333333" opacity=".18" p-id="2164"></path>
+                            </svg>
+                            <h4>网络和数据库/还不会</h4>
+                            <p>
+                                TCP/IP等<br />
+                                Mysql等<br />
+
+                            </p>
+                            <a></a>
+                        </div>
+                    </div>
+                </div>
+
+                
+
+                <!-- 专业 -->
+                <div class="content-li li5">
+                    <h3>
+                        <span>    开发成员</span>
+                        <div class="borderbotm"></div>
+                        <span>04</span>
+                    </h3>
+                    <div class="li5-box">
+                        <div class="left buttonsty" id="leftimg">
+                            <span>
+                                <svg t="1649148549783" class="icon" viewBox="0 0 1024 1024" version="1.1"
+                                    xmlns="http://www.w3.org/2000/svg" p-id="22757" width="25" height="25">
+                                    <path
+                                        d="M325.399273 235.124364L600.157091 488.727273 325.399273 742.353455a34.909091 34.909091 0 1 0 47.36 51.316363l302.545454-279.272727a34.909091 34.909091 0 0 0 0-51.316364l-302.545454-279.272727a34.909091 34.909091 0 1 0-47.36 51.316364"
+                                        fill="#ffffff" p-id="22758" data-spm-anchor-id="a313x.7781069.0.i41"
+                                        class="selected"></path>
+                                </svg>
+                            </span>
+                        </div>
+                        <div class="right buttonsty" id="rightimg">
+                            <span>
+                                <svg t="1649148517782" class="icon" viewBox="0 0 1024 1024" version="1.1"
+                                    xmlns="http://www.w3.org/2000/svg" p-id="21306" width="25" height="25">
+                                    <path
+                                        d="M675.328 765.626182L400.570182 512l274.757818-253.626182a34.909091 34.909091 0 1 0-47.36-51.316363l-302.545455 279.272727a34.909091 34.909091 0 0 0 0 51.316363l302.545455 279.272728a34.909091 34.909091 0 1 0 47.36-51.316364"
+                                        fill="#ffffff" p-id="21307" data-spm-anchor-id="a313x.7781069.0.i34"
+                                        class="selected"></path>
+                                </svg>
+
+
+                            </span>
+                        </div>
+
+                        <div class="li5box-ul" id="li5boxul">
+                            <div class="li5box-car carbox">
+                                <img src="./img/toux.jpg" alt="">
+                                <div class="card-content">
+                                    <h3>李德宇</h3>
+                                    <span>专业</span>
+                                    <blockquote>成就</blockquote>
+                                </div>
+                            </div>
+                            <div class="li5box-car carbox">
+                                <img src="./img/toux.jpg" alt="">
+                                <div class="card-content">
+                                    <h3>陈欣铭</h3>
+                                    <span>专业</span>
+                                    <blockquote>成就</blockquote>
+                                </div>
+                            </div>
+                            <div class="li5box-car carbox">
+                                <img src="./img/toux.jpg" alt="">
+                                <div class="card-content">
+                                    <h3>简钰伦</h3>
+                                    <span>专业</span>
+                                    <blockquote>成就</blockquote>
+                                </div>
+                            </div>
+                            <div class="li5box-car carbox">
+                                <img src="./img/toux.jpg" alt="">
+                                <div class="card-content">
+                                    <h3>杨越竣</h3>
+                                    <span>专业</span>
+                                    <blockquote>成就</blockquote>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 底部 -->
+                <div class="carbox copybottm">
+                    COPYRIGHT ©2025by GUSION
+                </div>
+            </div>
+            <div class="left">
+            </div>
+        </div>
+    </div>
+    <script src="./js/music.js"></script>
+    <script src="./js/canvas.js"></script>
+    <script src="./js/base.js"></script>
+    <script src="./js/index.js"></script>
+</body>
+
+</html>
