@@ -24,7 +24,19 @@
             </div>
             
             <div class="tab-content active" id="login">
-                <form id="login-form">
+    <form id="login-form">
+        <!-- 添加身份选择 -->
+        <div class="form-group identity-selection">
+            <label>登录身份</label>
+            <div class="radio-group">
+                <label class="radio-label">
+                    <input type="radio" name="identity" value="user" checked> 用户
+                </label>
+                <label class="radio-label">
+                    <input type="radio" name="identity" value="admin"> 管理员
+                </label>
+            </div>
+        </div>
                     <div class="form-group">
                         <label for="login-username">用户名</label>
                         <input type="text" id="login-username" required placeholder="请输入用户名">
@@ -68,6 +80,24 @@
     </div>
 
     <style>
+    .identity-selection .radio-group {
+    display: flex;
+    gap: 20px;
+    margin-top: 8px;
+}
+
+.identity-selection .radio-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    color: #606770;
+}
+
+.identity-selection input[type="radio"] {
+    margin-right: 8px;
+    width: auto;
+}
+
         #particleCanvas {
     position: absolute;
     top: 0;
@@ -277,10 +307,23 @@ body {
         });
 
         // 简单表单提交处理
-        document.getElementById('login-form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            alert('登录功能已触发，实际项目中应添加AJAX请求');
-        });
+// ... existing code ...
+document.getElementById('login-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    // 获取选中的身份类型
+    const identity = document.querySelector('input[name="identity"]:checked').value;
+    const username = document.getElementById('login-username').value;
+    
+    // 根据身份类型显示不同提示
+    if (identity === 'admin') {
+        alert(`管理员 ${username} 登录功能已触发`);
+        // 实际项目中可添加管理员登录API调用
+    } else {
+        alert(`用户 ${username} 登录功能已触发`);
+        // 实际项目中可添加普通用户登录API调用
+    }
+});
+// ... existing code ...
 
         document.getElementById('register-form').addEventListener('submit', function(e) {
             e.preventDefault();
